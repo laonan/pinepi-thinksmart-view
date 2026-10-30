@@ -1,0 +1,3 @@
+include requirements.lock
+recursive-include deploy *.service
+recursive-include tools *.py

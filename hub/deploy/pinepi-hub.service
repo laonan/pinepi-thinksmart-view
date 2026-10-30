@@ -1,0 +1,31 @@
+[Unit]
+Description=PinePi Hub foundation service
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=alan
+Group=alan
+WorkingDirectory=/home/alan/pinepi-thinksmart-view/hub
+Environment=PINEPI_HUB_ARGS=
+EnvironmentFile=-/etc/pinepi-hub/runtime.env
+ExecStart=/home/alan/pinepi-thinksmart-view/hub/.venv/bin/python -m pinepi_hub $PINEPI_HUB_ARGS
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=10
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+StateDirectory=pinepi-hub
+StateDirectoryMode=0700
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
+

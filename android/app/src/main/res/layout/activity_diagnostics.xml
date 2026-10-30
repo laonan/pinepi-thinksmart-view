@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/home_title"
+            android:textColor="@color/text_primary"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+        <TextView style="@style/SectionBody" android:text="@string/home_subtitle" />
+        <LinearLayout style="@style/HomeSection">
+            <TextView style="@style/SectionTitle" android:text="@string/audio_title" />
+            <TextView style="@style/SectionBody" android:text="@string/audio_scope" />
+            <TextView android:id="@+id/audio_bluetooth_gate" style="@style/SectionBody"
+                android:accessibilityLiveRegion="polite" android:text="@string/bluetooth_unknown" />
+            <RadioGroup android:id="@+id/input_source" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:checkedButton="@id/input_mic">
+                <RadioButton android:id="@+id/input_speech" android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:minHeight="48dp" android:text="@string/input_speech" />
+                <RadioButton android:id="@+id/input_mic" android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:minHeight="48dp" android:text="@string/input_mic" />
+            </RadioGroup>
+            <TextView android:id="@+id/audio_status" style="@style/SectionBody" android:accessibilityLiveRegion="polite" android:text="@string/audio_idle" />
+            <TextView android:id="@+id/audio_notice" style="@style/SectionBody" android:visibility="gone" />
+            <TextView android:id="@+id/audio_metrics" style="@style/SectionBody" />
+            <ProgressBar android:id="@+id/audio_level" style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent" android:layout_height="12dp"
+                android:layout_marginTop="8dp" android:max="100" android:contentDescription="@string/audio_level" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <Button android:id="@+id/record_start" style="@style/HomeButton" android:layout_width="0dp" android:layout_weight="1" android:text="@string/record_start" />
+                <Button android:id="@+id/record_finish" style="@style/HomeButton" android:layout_width="0dp" android:layout_weight="1" android:text="@string/record_finish" />
+            </LinearLayout>
+            <CheckBox android:id="@+id/enhance_playback" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:minHeight="48dp" android:checked="false" android:text="@string/enhance_playback" />
+            <TextView android:id="@+id/enhance_status" style="@style/SectionBody" android:text="@string/enhance_not_used" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <Button android:id="@+id/audio_play" style="@style/HomeButton" android:layout_width="0dp" android:layout_weight="1" android:text="@string/audio_play" />
+                <Button android:id="@+id/audio_cancel" style="@style/HomeButton" android:layout_width="0dp" android:layout_weight="1" android:text="@string/audio_cancel" />
+            </LinearLayout>
+            <Button android:id="@+id/speaker_test" style="@style/HomeButton" android:text="@string/speaker_test" />
+            <TextView android:id="@+id/audio_device_status" style="@style/SectionBody" />
+        </LinearLayout>
+        <LinearLayout style="@style/HomeSection">
+            <TextView style="@style/SectionTitle" android:text="@string/bluetooth_title" />
+            <TextView android:id="@+id/bluetooth_status" style="@style/SectionBody" android:accessibilityLiveRegion="polite" android:text="@string/bluetooth_unknown" />
+            <TextView style="@style/SectionBody" android:text="@string/bluetooth_scope" />
+            <Button android:id="@+id/bluetooth_settings" style="@style/HomeButton" android:text="@string/bluetooth_settings" />
+        </LinearLayout>
+        <LinearLayout style="@style/HomeSection">
+            <TextView style="@style/SectionTitle" android:text="@string/proximity_title" />
+            <TextView android:id="@+id/proximity_info" style="@style/SectionBody" />
+            <TextView android:id="@+id/proximity_value" style="@style/SectionBody" android:text="@string/proximity_wait" />
+            <CheckBox android:id="@+id/proximity_wake_enabled" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:minHeight="48dp" android:text="@string/proximity_wake_enable" />
+            <TextView android:id="@+id/proximity_wake_status" style="@style/SectionBody" android:accessibilityLiveRegion="polite" />
+            <TextView style="@style/SectionBody" android:text="@string/proximity_scope" />
+        </LinearLayout>
+        <LinearLayout style="@style/HomeSection">
+            <TextView style="@style/SectionTitle" android:text="@string/hub_title" />
+            <TextView android:id="@+id/hub_status" style="@style/SectionBody" android:text="@string/hub_pending" android:accessibilityLiveRegion="polite" />
+            <LinearLayout android:id="@+id/hub_candidates" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+            <TextView android:id="@+id/hub_latest_message" style="@style/SectionBody" android:text="@string/hub_test_no_message" android:textIsSelectable="true" />
+        </LinearLayout>
+        <LinearLayout style="@style/HomeSection">
+            <TextView style="@style/SectionTitle" android:text="@string/settings_title" />
+            <TextView android:id="@+id/home_status" style="@style/SectionBody" android:text="@string/home_not_default" />
+            <Button android:id="@+id/wifi_settings" style="@style/HomeButton" android:text="@string/wifi_settings" />
+            <Button android:id="@+id/system_settings" style="@style/HomeButton" android:text="@string/system_settings" />
+            <Button android:id="@+id/home_settings" style="@style/HomeButton" android:text="@string/home_settings" />
+            <Button android:id="@+id/maintenance_launcher" style="@style/HomeButton" android:text="@string/maintenance_launcher" />
+        </LinearLayout>
+        <LinearLayout style="@style/HomeSection">
+            <TextView style="@style/SectionTitle" android:text="@string/baseline_title" />
+            <TextView android:id="@+id/device_baseline" style="@style/SectionBody" android:textIsSelectable="true" />
+            <TextView android:id="@+id/os_warning" style="@style/SectionBody" android:text="@string/os_warning" android:visibility="gone" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

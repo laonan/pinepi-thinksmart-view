@@ -1,0 +1,33 @@
+.DS_Store
+.idea/
+*.iml
+.gradle/
+.kotlin/
+**/build/
+local.properties
+*.jks
+*.keystore
+captures/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+.env
+.local/
+
+# Local environment and credentials
+.env.*
+!.env.example
+!.env.*.example
+*.key
+*.p12
+*.pfx
+**/link-test.json
+**/android-hub-test.json
+**/broadcast-mid.json
+**/runtime.env
+
+# On-device validation data can contain private messages and screenshots.
+/hub/reports/
