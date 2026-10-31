@@ -2,13 +2,13 @@
 
 **English** | [中文版](MESSAGE_PROTOCOL.zh-CN.md)
 
-Protocol version: `2`. Applies to Android 0.8.0 and the matching Hub. Replace example IP addresses with the actual Hub address.
+Protocol version: `2`. Applies to Android 0.8.0 and later with the matching Hub; Hub-managed Baidu synthesis and bundled prompts require 0.8.1. Replace example IP addresses with the actual Hub address.
 
 ## Implementation status
 
 Implemented: Hub v2 validation, durable pending messages and forwarding; four Android message types and two text modes; URL-based media loading; playback of supplied narration audio; manual audio/video playback; and v2 ACKs. Legacy `version: 1` text and fixed test messages remain compatible and do not automatically speak.
 
-**Pending configuration: Baidu API credentials are unavailable, so no Baidu audio has been generated. The four fixed notification announcements are not bundled yet.** Corresponding messages display normally but their announcement remains silent; no substitute sound is used. Resource selection and playback are implemented and become usable after generation and an APK rebuild. Ordinary text currently requires a sender-generated `speech.url`. Automatic body-to-speech calls on the Hub, news collection, and scheduling are outside this implementation. Protocol support does not mean Baidu TTS is configured.
+**Since 0.8.1:** the four fixed Chinese announcements have been generated with Baidu and bundled in the APK. The Hub can synthesize permitted short-text bodies and cache their MP3 files. On 2026-10-31, the user confirmed hearing all four local announcements and a complete Hub-generated narration. Credentials stay in private Hub configuration, never on the terminal or in Git. News collection, scheduling, and long-text segmentation are not implemented; primary audio/video playback is separate from the arrival announcements.
 
 ## Transport and publishing
 
@@ -41,6 +41,24 @@ PYTHON
 Errors: `401` unauthorized, `413` JSON frame over 64 KiB, `422` invalid JSON/fields, and `503` durable storage not configured. Validation errors contain a reason, not the message body. Do not include credentials, Base64, binary media, or provider-specific TTS parameters in the JSON.
 
 Broadcast Mid accepts a complete v2 object inside `event`, or a direct complete object; v2 IDs are preserved. Legacy `event.title/content/source` still becomes silent v1 text. An invalid new-format object containing `version/kind/text_mode/speech/media` is rejected rather than reinterpreted as legacy text.
+
+## Optional Hub-managed Baidu TTS (0.8.1)
+
+This is an HTTP publishing convenience; **the WebSocket v2 format is unchanged**. For `POST /api/messages`, take the ordinary TEXT/TTS example below and omit `speech`. With Baidu enabled, the Hub generates narration from `text` only, adds the required `speech` object, validates the complete wire message, persists it, and forwards it. A supplied `speech` URL is used as-is without a Baidu call. `PRIVATE`, IMAGE, AUDIO, VIDEO, and legacy messages do not trigger this synthesis path.
+
+This first integration uses Baidu's short-text API: the body must be GBK-encodable and **less than 1024 GBK bytes** (at most 511 ordinary two-byte Chinese characters, fewer when other content consumes space). Oversized or unsupported text is rejected with `422`; it is never truncated. The larger v2 display limit still applies when a sender supplies pre-generated narration. Long news needs a later segmentation/long-text implementation or externally generated audio.
+
+Create the dedicated media directory and add these arguments to the existing Hub service configuration, preserving the other arguments:
+
+```text
+--baidu-tts-config /home/alan/.config/pinepi-hub/baidu-tts.json --media-directory /var/lib/pinepi-hub/media --media-base-url http://192.168.31.36:8766/media/
+```
+
+The private JSON uses the `api_key` and `secret_key` format shown in the prompt-generation section. Optional `voice` (Baidu `per`, default `0`, Du Xiaomei) and `speed` (0–15, default `5`) configure body narration. Keep the file mode `0600`. Use a media base URL reachable by the terminal and update it when the Hub address changes. Restart the service after changing its arguments.
+
+Access tokens are kept in memory. Generated MP3s persist in the dedicated directory, keyed by a hash of text/voice/speed; the same body can reuse an existing file without another synthesis call. Narration files use mode `0600`, are served by the same Hub user, and remain outside Git. The cache is bounded to 256 MiB and does not automatically delete files still referenced by history; manage retired files deliberately. A duplicate pending ID is checked before synthesis.
+
+Missing/invalid configuration returns `503`; provider connection/authentication/synthesis failures return a body-free `502` reason. Failed synthesis does not enqueue the message or return a successful ACK: the publisher retains its request and must retry or explicitly choose another output policy. No message is silently converted from TTS to PRIVATE. Provider responses, credentials, and message bodies are not included in error output.
 
 ## Common fields
 
@@ -234,6 +252,6 @@ python3 hub/tools/generate_notice_audio.py --config ~/.config/pinepi-hub/baidu-t
 
 The default voice is Du Xiaomei (`per=0`); select another enabled Baidu voice with `--voice`. The tool only submits the four fixed public phrases and has no arbitrary-message-body input. It writes to `android/app/src/main/res/raw/` only after all four generations succeed. Output contains resource checksums, never keys or tokens.
 
-Commit the four generated MP3 product assets, then rebuild/install the APK. They remain available on the terminal without runtime Baidu calls. The private configuration is excluded by `.gitignore` and must never be committed. Missing assets remain silent and must not be counted as successful announcement validation.
+Commit the four generated MP3 product assets, then rebuild/install the APK. They remain available on the terminal without runtime Baidu calls. The private configuration is excluded by `.gitignore` and must never be committed. All four assets are now referenced at compile time; a missing file must be restored before building. Actual audibility still requires device validation.
 
 Reference: [Baidu short-text synthesis API](https://ai.baidu.com/ai-doc/SPEECH/mlbxh7xie).

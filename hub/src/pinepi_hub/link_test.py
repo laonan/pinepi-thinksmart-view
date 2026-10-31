@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from .message_protocol import MAX_FRAME_BYTES, ProtocolError, validate_message
+from .baidu_tts import SpeechError, validate_submission
 
 
 class LinkTest:
@@ -23,6 +24,22 @@ class LinkTest:
         self.notification_lock = asyncio.Lock()
         self.notifications = None
         self.upstream_status = None
+        self.speech = None
+        self.submission_lock = asyncio.Lock()
+
+    async def publish_submission(self, message):
+        validate_submission(message)
+        needs_speech = message['kind'] == 'TEXT' and message.get('text_mode') == 'TTS' and 'speech' not in message
+        if not needs_speech:
+            # A slow external provider must not delay private/local-only notifications.
+            return await self.publish_notification(message)
+        async with self.submission_lock:
+            if any(row['id'] == message['id'] for row in self.notifications.messages):
+                return False
+            if self.speech is None:
+                raise SpeechError('baidu_tts_not_configured')
+            message = await asyncio.to_thread(self.speech.prepare, message)
+            return await self.publish_notification(message)
 
     async def publish_notification(self, message):
         if message.get('version') == 2:
@@ -111,12 +128,17 @@ class LinkTest:
                 if len(body) > MAX_FRAME_BYTES:
                     raise HTTPException(413, detail='frame_too_large')
             try:
-                message = validate_message(json.loads(body))
+                message = validate_submission(json.loads(body))
             except ProtocolError as error:
                 raise HTTPException(422, detail=str(error)) from None
             except (ValueError, UnicodeError):
                 raise HTTPException(422, detail='invalid_json') from None
-            added = await self.publish_notification(message)
+            try:
+                added = await self.publish_submission(message)
+            except SpeechError as error:
+                reason = str(error)
+                status = 422 if reason.startswith('tts_text_') else 503 if reason.endswith(('not_configured', 'configuration_invalid')) else 502
+                raise HTTPException(status, detail=reason) from None
             return {'id': message['id'], 'status': 'queued' if added else 'duplicate'}
 
         @app.get("/_test/status")

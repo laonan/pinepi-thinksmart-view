@@ -4,11 +4,11 @@
 
 A custom Android Home launcher for the Lenovo ThinkSmart View, built and validated against **Android 8.1.0 / API 27**. It preserves the existing ROM, Bluetooth speaker functionality, and original launcher. See [Project context](PROJECT_CONTEXT.md) for decisions and scope.
 
-## Current status: Material 3 UI and message protocol v2 (0.8.0)
+## Current status: Material 3 UI, message protocol v2, and Baidu TTS (0.8.1)
 
 See **[Message protocol and usage](docs/MESSAGE_PROTOCOL.md)** for publishing, complete JSON fields, all five examples, acknowledgements, media limits, and notification audio generation. Version 2 supports spoken text, private text with a local announcement, and image/audio/video URLs. Legacy v1 text remains silent.
 
-Baidu credentials are not configured. The four fixed announcement files still need to be generated and bundled. News collection, scheduled briefings, and automatic body-to-speech synthesis on the Hub are not implemented. Audio/video playback is protected by Bluetooth state; receiving an audio URL does not constitute playback validation.
+Baidu TTS is connected in 0.8.1: four fixed announcements are bundled, and the Hub can synthesize permitted short text when the HTTP publisher omits `speech`. The user confirmed all four local announcements and one complete narration. Private text never enters this provider path. News collection, scheduled briefings, and long-text segmentation remain pending. Primary audio/video playback is distinct from its local arrival announcement; Bluetooth protection remains active.
 
 - Kotlin and Material 3 Compose, in one `app` module. The original native View diagnostics remain accessible through a hidden entry. No WebView is required.
 - Declares `MAIN + HOME + DEFAULT` and an app-list launch entry. Users choose it as the default Home through Android settings.
@@ -184,7 +184,7 @@ hub/                           # Service, transport tests, locked dependencies, 
 
 ## Next steps
 
-Preserve the accepted audio cancellation/release, proximity wake, and recovery behavior; track weak/muddy capture and long standby in [Device validation](docs/DEVICE_VALIDATION.md). Configure Baidu credentials and generate fixed prompts, then implement the approved speech pipeline with short-recording upload, STT, Hermes, permitted TTS, cancellation, and output-policy checks. Evaluate recognition using real recordings. Keep navigation flash at low priority. A successful build alone does not validate device capabilities.
+Preserve the accepted audio cancellation/release, proximity wake, and recovery behavior; track weak/muddy capture and long standby in [Device validation](docs/DEVICE_VALIDATION.md). The Baidu short-text loop and fixed prompts are connected; next implement the approved speech pipeline with short-recording upload, STT, Hermes, permitted TTS, cancellation, and output-policy checks. Evaluate recognition using real recordings. Keep navigation flash at low priority. A successful build alone does not validate device capabilities.
 
 ## Repository and local-only files
 

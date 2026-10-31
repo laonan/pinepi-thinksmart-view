@@ -74,8 +74,13 @@ class MessageAudio(private val context: Context, private val bluetooth: Bluetoot
 
     private fun local(name: String) {
         if (!allowed()) return
-        val resource = context.resources.getIdentifier(name, "raw", context.packageName)
-        if (resource == 0) { lastError = "本地提示音尚未生成"; return }
+        val resource = when (name) {
+            "notice_text" -> R.raw.notice_text
+            "notice_image" -> R.raw.notice_image
+            "notice_audio" -> R.raw.notice_audio
+            "notice_video" -> R.raw.notice_video
+            else -> return
+        }
         try {
             context.resources.openRawResourceFd(resource).use { descriptor ->
                 val next = MediaPlayer()

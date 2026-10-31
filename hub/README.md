@@ -2,7 +2,7 @@
 
 **English** | [中文版](README.zh-CN.md)
 
-The Hub provides the foundation service, LAN message transport, Broadcast Mid subscription/forwarding, and v2 validation with durable forwarding. See **[Message protocol and usage](../docs/MESSAGE_PROTOCOL.md)** for complete JSON and all five variants. `POST /api/messages` uses the control token; the terminal supports text, images, audio, and video. Baidu credentials and fixed announcements remain pending. STT, Agent integration, Hub body-to-speech generation, and scheduled news are not implemented.
+The Hub provides the foundation service, LAN message transport, Broadcast Mid subscription/forwarding, and v2 validation with durable forwarding. See **[Message protocol and usage](../docs/MESSAGE_PROTOCOL.md)** for complete JSON and all five variants. `POST /api/messages` uses the control token; the terminal supports text, images, audio, and video. Baidu short-text synthesis and bundled fixed announcements are connected in 0.8.1; the user confirmed all four prompts and one narration. Configure `--baidu-tts-config`, `--media-directory`, and `--media-base-url` as described in the protocol. STT, Agent integration, long-text segmentation, and scheduled news remain pending.
 
 `--link-test-config` enables durable pending storage. Set its path with `--notification-state`; otherwise it defaults to `notifications.json` beside the link configuration. Optional `--media-directory` explicitly serves a dedicated media directory at `/media`. The older validation records below retain their original scope.
 

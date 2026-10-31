@@ -10,6 +10,7 @@ from .link_test import LinkTest
 from .discovery import HubDiscovery
 from .broadcast_mid import BroadcastMid
 from .notifications import NotificationStore
+from .baidu_tts import BaiduSpeech
 
 
 def main() -> None:
@@ -25,6 +26,8 @@ def main() -> None:
     parser.add_argument("--broadcast-mid-config", type=Path)
     parser.add_argument("--notification-state", type=Path)
     parser.add_argument('--media-directory', type=Path, help='optional dedicated directory served at /media')
+    parser.add_argument('--baidu-tts-config', type=Path, help='private Baidu api_key/secret_key JSON')
+    parser.add_argument('--media-base-url', help='terminal-accessible /media/ URL for generated narration')
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error("port must be between 1 and 65535")
@@ -67,6 +70,13 @@ def main() -> None:
             parser.error("Broadcast Mid requires a terminal link and notification state path")
         upstream = BroadcastMid(args.broadcast_mid_config, link.publish_notification)
         link.upstream_status = upstream.status
+    if args.baidu_tts_config is not None:
+        if link is None or args.media_directory is None or not args.media_base_url:
+            parser.error('Baidu TTS requires a message link, media directory and media base URL')
+        try:
+            link.speech = BaiduSpeech(args.baidu_tts_config, args.media_directory, args.media_base_url)
+        except ValueError:
+            parser.error('invalid Baidu media base URL')
     uvicorn.run(
         create_app(diagnostics=args.diagnostics, link_test=link, discovery=discovery, broadcast_mid=upstream,
                    media_directory=args.media_directory),

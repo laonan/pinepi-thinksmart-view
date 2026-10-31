@@ -240,3 +240,8 @@ A centered single downward chevron appears only when `ScrollState.canScrollForwa
 ### 0.7.8 double-chevron and tap hint
 
 Supersedes the non-click design: remove 28dp outer bottom padding, use a 32dp area (total 56→32dp), centered 24dp double down-chevron, 48dp-wide tap target. Show only the default Chinese Toast “请向上滑显示全部内容”; do not auto-scroll. Repeated taps replace the Toast; leaving cancels it. Dragging/inertia still works and cancels clicks. End/short-message visibility rules and non-text padding remain.
+
+
+### 0.8.1 Baidu short-text TTS (2026-10-31)
+
+Baidu credentials are configured privately on the Hub. The four fixed Chinese announcements were generated with voice 0 and bundled into Android 0.8.1 / code 23. HTTP TEXT/TTS publishing may omit speech; Hub checks the explicit mode before any provider call, synthesizes the body, caches MP3, then sends a strict v2 message with speech URL. PRIVATE never calls the provider. The user confirmed all four local announcements and a complete Hub-generated narration. This first adapter rejects bodies that cannot be GBK-encoded or reach 1024 GBK bytes; no truncation, long-news segmentation, STT, Agent, or scheduling is implied. The earlier credential-pending statements describe 0.8.0, not the current state.

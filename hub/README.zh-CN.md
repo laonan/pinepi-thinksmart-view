@@ -2,7 +2,7 @@
 
 [English](README.md) | **中文版**
 
-当前已完成基础服务、局域网消息链路、Broadcast Mid 订阅/转发和 v2 消息校验及持久转发。完整 JSON 和五种消息示例见 **[消息协议与使用说明](../docs/MESSAGE_PROTOCOL.zh-CN.md)**。提供受控制 token 保护的 `POST /api/messages`；终端支持文本、图片、音频、视频。百度凭证和固定提示音仍待配置，STT、Agent、Hub 正文 TTS 合成与定时新闻尚未实施。
+当前已完成基础服务、局域网消息链路、Broadcast Mid 订阅/转发和 v2 消息校验及持久转发。完整 JSON 和五种消息示例见 **[消息协议与使用说明](../docs/MESSAGE_PROTOCOL.zh-CN.md)**。提供受控制 token 保护的 `POST /api/messages`；终端支持文本、图片、音频、视频。0.8.1 已接通百度短文本正文合成并内置固定提示音，用户确认五段均完整听到；通过 --baidu-tts-config、--media-directory 和 --media-base-url 配置，见协议说明。STT、Agent、长文本分段与定时新闻仍待实施。
 
 `--link-test-config` 模式会启用持久消息队列；可用 `--notification-state` 指定路径，缺省使用该配置文件同目录的 `notifications.json`。可选 `--media-directory` 显式托管专用媒体目录到 `/media`。配置和使用方法见上述协议文档；下文旧版本测试记录保留其当时的范围。
 

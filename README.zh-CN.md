@@ -4,9 +4,9 @@
 
 面向 Lenovo ThinkSmart View 的自定义 Android Home Launcher APK。运行与验收基线为 **Android 8.1.0 / API 27**，保留现有 ROM、蓝牙音频能力和原桌面。项目背景见 [PROJECT_CONTEXT.md](PROJECT_CONTEXT.zh-CN.md)。
 
-## 当前阶段：Material 3 主 UI 与消息协议 v2（0.8.0）
+## 当前阶段：Material 3 主 UI、消息协议 v2 与百度 TTS（0.8.1）
 
-消息发送、完整 JSON 字段、五种示例、ACK、媒体限制和本地提示音生成步骤见 **[消息协议与使用说明](docs/MESSAGE_PROTOCOL.zh-CN.md)**。v2 支持普通文本朗读、隐私文本本地提示，以及图片/音频/视频 URL；旧 v1 文本保持静默兼容。百度凭证尚未配置，四段固定提示音待生成后打包；本轮没有把新闻采集、定时播报或 Hub 自动调用百度 TTS 标为已完成。
+消息发送、完整 JSON 字段、五种示例、ACK、媒体限制和本地提示音生成步骤见 **[消息协议与使用说明](docs/MESSAGE_PROTOCOL.zh-CN.md)**。v2 支持普通文本朗读、隐私文本本地提示，以及图片/音频/视频 URL；旧 v1 文本保持静默兼容。0.8.1 已接通百度短文本 TTS，四段固定提示音已内置；HTTP 发布 TEXT/TTS 时省略 speech 可由 Hub 合成。用户确认四段提示音和正文朗读均完整听到。隐私正文不进入该供应商路径；新闻采集、定时播报、长文本分段及音频/视频主体播放仍单独实施或验收。
 
 - Kotlin + Material 3 Compose 主 UI，单个 `app` 模块；原生 View 保留在隐藏调试页。无 WebView；接近唤醒与 Hub 继续使用独立前台服务。
 - 声明 `MAIN + HOME + DEFAULT`，可通过系统选择为默认桌面；同时保留应用列表启动入口。
