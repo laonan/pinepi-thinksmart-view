@@ -1,149 +1,145 @@
-# PinePi Home — 项目上下文
+# PinePi Home — project context
 
-更新：2026-10-30。来源：项目开发讨论、设备实测记录和已确认的开发决定。
+**English** | [中文版](PROJECT_CONTEXT.zh-CN.md)
 
-本文按后续决定覆盖早期探索整理。**已确认事实**指用户反馈的实机情况；**已定**指最终收敛的方向；**草案/建议**尚未成为冻结接口或验收结果；**待定**不得擅自补全。本文不是代码实现状态报告。
+Base record updated 2026-10-30, with subsequent decisions dated below. Sources: development discussions, device tests, and confirmed decisions. Later decisions supersede earlier exploration. **Verified facts** describe observed/user-confirmed device behavior; **agreed** means a chosen direction; **draft/proposal** is not a frozen interface or accepted result; **pending** must not be filled in by assumption. This is a decision record, not a substitute for implementation reports.
 
-## 1. 硬件与已验证事实
+Documentation policy, confirmed 2026-10-31: English is the primary GitHub documentation language. Preserve Chinese editions as `.zh-CN.md`, link them using “中文版” from the English originals, and provide reciprocal English links. Update both editions together. Documentation language does not change the device UI or spoken Chinese prompts.
 
-2026-10-31 协议决定：消息扩为 TEXT/IMAGE/AUDIO/VIDEO 四类；TEXT 必须显式选择 TTS（正文朗读音频 URL）或 PRIVATE（正文不送第三方，只播本地“有新的文字消息”）。图片、音频、视频各播放对应固定到达提示；音频/视频主体手动播放。提示音开发期用百度合成并随 APK 持久打包，当前用户确认没有百度凭证，四个资源尚未生成。完整字段、示例与当前实施边界见 [消息协议与使用说明](docs/MESSAGE_PROTOCOL.md)，本决定覆盖下文早期三类媒体及未冻结协议描述。
+## 1. Hardware and verified facts
 
-| 项目 | 状态与边界 |
+**2026-10-31 protocol decision:** four message types, TEXT/IMAGE/AUDIO/VIDEO. TEXT explicitly chooses TTS (body narration supplied by audio URL) or PRIVATE (do not send body to third-party TTS; play the fixed local text announcement). Images/audio/video have their respective fixed arrival announcements; primary audio/video playback is manual. Generate prompts through Baidu during development and persist them in the APK. Baidu is the initial TTS provider, but the user has no credentials configured and the four assets have not been generated. See [Message protocol and usage](docs/MESSAGE_PROTOCOL.md). This supersedes earlier three-type and unfrozen notification-protocol notes below; it does not freeze conversational session/upload events.
+
+| Item | Status and limits |
 | --- | --- |
-| 设备 | Lenovo ThinkSmart View；已用 ADB 核验 Android 8.1.0 / API 27，构建号 `Lenovo_Kingston_OS_PV_220620_V0.0.40`。买来已安装，ROM 的具体来源和修改方式未确认。 |
-| 蓝牙音箱 | **用户已验证**：当前这套 ROM 能连接手机并播放音乐，即手机 → 设备的蓝牙音频接收方向。保留现状。 |
-| 屏幕方向 | **用户已观察到**可竖屏显示；自定义 Launcher 的旋转、状态恢复尚未验证。 |
-| 参考规格 | 原对话引用 CD-18781Y、APQ8053、2GB RAM、8GB eMMC、8 英寸 1280×800 触屏、双麦克风、10W 音箱；这些是资料规格，尚未逐项核对本机。 |
-| Launcher 验证 | 用户已验证主页、系统设置、原桌面入口、默认 Home、反复 Home 返回及重启后进入；进入前原桌面短暂闪现。原先熄屏后仅音量键可唤醒；0.3.0 已完成本轮接近亮屏验证。 |
-| 本地音频验证 | 0.2.4 已验证录音与回放、独立测试音输出；启动爆破声已消除。用户反馈增强试听音量可接受，但声音有些浑浊，清晰度待优化。回放增强不改变原始 WAV，尚未验证 STT 效果。 |
-| 停止与取消验证 | 0.2.4 已验证录音取消、录音中进入设置/蓝牙重连后停止并清理，取消蓝牙等待后不会自动录音；增强回放取消后立即停声并释放焦点与效果链。具体证据见验证记录。 |
-| 接近传感器验证 | 前台 `VCNL4200 PRX` 靠近为 0.0、移开为 5.0，可重复。0.3.0 增加可开关的前台服务后，本轮熄屏接近亮屏通过：用户反馈与 ADB 的 OFF → ON 及唤醒请求日志一致；关闭服务与监听释放也已核验。 |
-| 重启后接近唤醒 | 2026-10-30 用户确认重新通电后接近唤醒仍能正常使用；此项为用户实测反馈，未在本轮通过 ADB 独立检查开关和服务状态。 |
-| 导航栏体验问题 | 0.3.1 已安装：提前恢复主页沉浸式及单包系统规则均未消除唤醒时导航栏闪现，系统规则已恢复原状。系统设置、原 Launcher 3 的导航及 Home 返回已回归验证。2026-10-30 用户确认不影响使用，接受暂时保留，按低优先级关注，不阻塞 Hub 开发。 |
-| USB 开发注意事项 | 使用已验证的 A → C 连接；冷启动先只接电源，完全进入桌面后再接 USB。无法识别时按相同顺序重新上电。本轮恢复成功，具体底层原因未确定；操作与网络 ADB 恢复步骤统一见 README 的“开发注意事项”。 |
-| 尚未验证 | 其余蓝牙拦截与生命周期组合、长时间休眠/深度待机下的接近唤醒、长时间运行及完整 AI 链路尚未全部验证。 |
+| Device | Lenovo ThinkSmart View; ADB verified Android 8.1.0 / API 27, build `Lenovo_Kingston_OS_PV_220620_V0.0.40`. ROM was preinstalled; its provenance and modifications are unconfirmed. |
+| Bluetooth speaker | User verified phone-to-device Bluetooth music reception on this ROM. Preserve it. |
+| Orientation | User observed portrait operation; launcher rotation/state restoration is not accepted yet. |
+| Reference specifications | CD-18781Y, APQ8053, 2 GB RAM, 8 GB eMMC, 8-inch 1280×800 touch display, dual microphones, 10 W speaker were cited in discussion, not individually verified on this unit. |
+| Launcher | Home page, system settings, original launcher entry, default Home, repeated Home return, and post-reboot entry were user-verified. Original launcher briefly flashes first. Initially only volume buttons woke the screen; 0.3.0 added an accepted proximity-wake test. |
+| Local audio | 0.2.4 capture/replay and independent test tones verified; startup pop removed. Enhanced playback volume was acceptable but muddy. Enhancement does not change the original WAV; STT quality is untested. |
+| Stop/cancel | 0.2.4 cancellation, opening Settings/reconnecting Bluetooth during capture, and canceling a disconnect wait stopped/cleared capture. Canceling enhanced replay stopped sound and released focus/effects. See validation evidence. |
+| Proximity | Foreground `VCNL4200 PRX` repeatedly near=0.0, far=5.0. In 0.3.0, the optional foreground service passed screen-off wake: user feedback matched ADB OFF→ON and wake logs. Disabling removed service/listener. |
+| Proximity after reboot | On October 30 the user confirmed wake after restoring power. That report did not independently check stored switch/service state through ADB in the same round. |
+| Navigation flash | 0.3.1 earlier immersive flags and a package-specific rule both failed to eliminate the wake flash. The system rule was restored. Settings/Launcher 3 navigation and Home return passed. User accepts this low-priority issue; it does not block Hub work. |
+| USB development | Use the verified A-to-C path. On cold boot, connect power only, wait for Home, then connect USB. This recovered enumeration; the low-level cause remains unknown. See README development notes and network ADB recovery. |
+| Still unverified | Some Bluetooth/lifecycle combinations, long/deep standby proximity wake, extended operation, and the complete AI pipeline. |
 
-**2026-10-29 开发决定：运行与验收基线锁定为 Android 8.1.0（API 27），从自定义 Launcher APK 开始。**版本与构建号已核验，完整记录见 `docs/DEVICE_VALIDATION.md`；不能将讨论过的 LineageOS 15.1 自动认定为当前 ROM。0.2.0 加入本地音频测试、公共蓝牙广播监测及前台接近传感器诊断；实现与验收状态以 README 和验证记录为准。
+**2026-10-29 baseline decision:** Android 8.1.0 / API 27 and a custom Home APK. Version/build were verified; discussing LineageOS 15.1 did not establish that it is installed. Version 0.2.0 added local audio, public Bluetooth broadcasts, and foreground sensor diagnostics. README and [Device validation](docs/DEVICE_VALIDATION.md) govern implementation/acceptance details.
 
-## 2. 已定技术方向
+## 2. Agreed technical direction
 
-- **固定 Android 8.1.0（API 27）+ 自定义 Home Launcher APK + 原生系统设置 + 远程 Home AI Hub。**保留现有 ROM 和驱动，开发集中于应用层。
-- 终端负责触摸、录音、显示、播放及本地连接状态；STT、Agent 接入、TTS 和内容策略在 Hub 协调。终端不运行大模型，不绑定具体 Agent 或语音供应商。
-- 上游通知复用已有 [pinepi-broadcast-mid](https://github.com/laonan/pinepi-broadcast-mid)：原有终端保持原订阅，本地 Hub 作为独立订阅端接入后转发到 ThinkSmart；需要双向交互的 Agent 直接与本地 Hub 对接，由 Hub 适配其接口。Broadcast Mid 实际 WSS 文本订阅与终端转发已于 0.7.2 接通；双向 Agent 接入仍待实施。
-- 保留原生 Launcher 作为维护入口；自定义 Launcher 直接打开 Android 的 Wi-Fi、蓝牙及系统设置。默认桌面由用户通过系统选择，不依赖静默切换或系统特权。
-- **点击屏幕触发录音**，平时不持续监听；先完成短录音 → STT → Agent → 文字/TTS 的闭环。
-- **蓝牙与 AI 语音分开使用**：点击 AI 时若手机音频仍连接，提示用户在手机端断开；检测到断开后进入 AI。取消则不录音。不自动关闭全部蓝牙，不依赖隐藏 API 强制断开。
-- 使用成熟组件，保持小型自用原型；不自行维护内核、驱动或专用操作系统，不增加无必要的中间服务。
-- **Hub 必须作为系统 service 运行（2026-10-30 用户明确要求）**：在 RPi 上采用 systemd 管理，支持开机自启、后台常驻、异常退出自动重启及明确的启动/停止/状态查询，不依赖 Mac、终端窗口或 SSH 会话存活。
-- **开发授权边界（2026-10-30）**：基础能力测试、构建及基础运行设施可自主推进；新增业务逻辑、业务协议和 UI 规划须取得用户许可后再实施。
-- **局域网按物联网网关的可信网络边界处理（2026-10-30）**：用户明确允许 Hub 与 ThinkSmart 使用 WS/HTTP、不配置局域网证书；公网侧仍使用 WSS/HTTPS。终端接入暂不认证，WS 地址限制为明确的私有 IPv4。首次发现必须显示确认按钮，由用户知情确认后才连接；按稳定 Hub 编号记住选择，IP 改变不重复确认，新的 Hub 编号需要确认。开发控制接口仍保留独立 token，与终端接入无关。
-- **0.4.0 / 0.5.0 已授权的联调范围**：复用现有 Hub 区域，仅显示连接状态和最近一条固定测试消息，验证接收、熄屏亮屏、断网重连及 Hub 重启恢复；不设计正式主 UI。该闭环已在 0.4.0 完成自动实机核验；0.5.0 增加 mDNS/NSD 自动发现及用户已实测点击的首次确认按钮，临时测试协议不作为正式业务协议冻结。
+- **Android 8.1 / API 27 + custom Home launcher + native settings + remote Home AI Hub.** Preserve ROM/drivers and work at application level.
+- Terminal owns touch, recording, display, playback, and local connection state. Hub coordinates STT, Agent access, TTS, and content policy. The terminal runs no large model and is not tied to an Agent or speech vendor.
+- Reuse [pinepi-broadcast-mid](https://github.com/laonan/pinepi-broadcast-mid) for upstream notifications. Existing terminals keep their subscriptions; the local Hub subscribes independently and forwards to ThinkSmart. Bidirectional Agents connect through Hub adapters. Real Mid WSS text forwarding works since 0.7.2; bidirectional Agent access remains pending.
+- Preserve the original launcher for maintenance. Use public Wi-Fi/Bluetooth/system Settings intents and user-selected default Home, not privileged silent switching.
+- **Tap to record; no continuous listening.** First close the short-recording → STT → Agent → text/permitted TTS loop.
+- **Use Bluetooth music and AI voice separately.** If phone audio is still connected, ask the user to disconnect it; observed disconnection permits AI recording. Cancel does not record. Do not disable all Bluetooth or force a hidden-profile disconnect.
+- Use mature components for a small personal prototype. Do not maintain kernels, drivers, a dedicated OS, or unnecessary intermediary services.
+- **Hub must be a system service** (October 30): systemd on Pi, boot startup, background operation, crash restart, explicit start/stop/status, independent of Mac/terminal/SSH lifetime.
+- **Development authorization** (October 30): foundation tests/build/infrastructure may proceed autonomously. New business logic, protocol, and UI plans require user approval; subsequent explicit approvals authorize their respective work.
+- **Trusted-LAN boundary** (October 30): WS/HTTP between Hub and terminal without local certificates; WSS/HTTPS publicly. No terminal authentication for now; discovered WS endpoints require explicit private IPv4. First use shows a simple confirmation before connection. Persist selection by Hub identity: same ID with a changed IP does not prompt again; another identity does. Control/test endpoints retain an independent token.
+- The 0.4.0/0.5.0 approved loop reused the existing Hub area for connection and the latest fixed test text, validating reception, independent screen wake, reconnect, and restart without designing a formal UI. 0.5.0 added discovery and personally verified consent. Those temporary probe messages are not the later notification protocol.
 
-### 首版 Agent 与跨网络方案（2026-10-30 已确认）
+### Initial Agent and cross-network access (confirmed 2026-10-30)
 
-- 首版收敛为 **Hermes**，由本地 Hub 调用远端 Hermes 的现成 HTTP API；跨网络连接采用 **Tailscale**。PinePi Home 仍只连接本地 Hub，无需在 Android 8.1 终端安装 Tailscale。远端 API 地址、Hermes 实际版本及能力、访问密钥和 Tailscale 部署尚未检查或配置。
-- 用户发起的对话：`PinePi Home ↔ 本地 Hub ↔（Tailscale 私有网络）↔ Hermes API`。正常对话回复通过同一次 API 调用/事件流返回 Hub，再送回终端对话页，不重复广播。
-- Hermes 主动通知复用已有链路：`Hermes →（HTTPS 发布）→ Broadcast Mid →（WSS 订阅）→ 本地 Hub →（LAN WS）→ PinePi Home 消息页`。Hermes 作为已有 Mid 的消息生产者，复用现有发布接口与凭证；Hub 使用独立订阅身份，不影响现有终端。Mid 文本通知已接通，设备名为 `pinepi-home-hub`，兼容 `event.title/content`；图片/视频以及 Hermes 作为 Producer 的配置仍待实施。
-- 两条链路分工明确：交互会话走 Hermes API，主动通知走 Mid；主动通知不会自动触发 Agent 推理，也不自动写入当前 Chat 会话的上下文。今后若要求消息与会话关联，再定义关联字段。
-- 本阶段不开发 Hermes 渠道插件，不接入 Gadget，不同时实现多套 Agent 适配或通用插件框架；只保留 Hub 内的小型 Hermes 适配模块边界，便于以后替换。此前“以后为主动推送再增加自定义渠道”的建议已由复用 Mid 的决定覆盖。
-- 本节是用户确认的接入方向，并非已部署状态。Tailscale 本身不会让 Hermes API 自动对其他节点可达，实施时仍需配置服务监听或 Serve 转发，并保留 Hermes API 认证；密钥只在服务端保存。
+Use one **Hermes** instance through its existing HTTP API, reached by the local Hub over **Tailscale**. The Android terminal only connects to its local Hub and does not need Tailscale. Actual endpoint, Hermes version/capabilities, keys, and deployment remain unchecked/unconfigured.
 
-### 主 UI 讨论约束（2026-10-30）
+- Interactive conversation: `PinePi Home ↔ local Hub ↔ Tailscale private network ↔ Hermes API`. Return replies through that API call/event stream to Chat; do not rebroadcast them.
+- Proactive notification: `Hermes → HTTPS publish → Broadcast Mid → WSS subscription → local Hub → LAN WS → Messages`. Reuse Mid publishing and separate Hub subscriber identity without disturbing other terminals. Legacy title/content already works; Hermes Producer configuration and its actual media publishing remain pending.
+- Notifications do not automatically invoke Agent reasoning or enter current chat context. Define correlation fields later if needed.
+- Do not build a Hermes channel plugin, Gadget integration, general plugin framework, or several Agent adapters now. Keep a small replaceable Hub Hermes adapter boundary. Reusing Mid supersedes the earlier proposal for a later custom proactive channel.
+- This is an agreed direction, not deployed capability. Tailscale alone does not make an API reachable: configure listening or Serve forwarding, retain Hermes authentication, and store keys server-side.
 
-用户明确要求保留现有测试 View，之后作为二级调试页面，通过隐藏入口打开；线框讨论后，用户已授权实现终端主 UI。0.6.0 采用消息、对话、设置三页，旧测试页迁移为不导出的 DiagnosticsActivity。本轮按已提出的隐藏入口实现“设置 → 连续点击版本号 7 次”（相邻不超过 3 秒），调试页返回设置。线框中的时钟布局、消息停留/关闭与语音入口均为讨论方案；Agent 选择入口已按用户决定移除，路由由 Hub 决定。其余线框内容不代表业务实现或体验已冻结。
+### Main UI constraints and implementation
 
-### 0.7.1 布局与翻页（用户已授权实现）
+The user required the existing diagnostic View to remain available as a hidden secondary page. After wireframe discussion, the three-page main UI was approved. Version 0.6.0 moved all original testing to non-exported `DiagnosticsActivity`, reached by seven version taps within three-second intervals; Back returns to Settings. Wireframe clock placement, message duration/dismissal, and voice entry were initially proposals; Agent selection was removed by decision and routing belongs to the Hub. Other wireframe suggestions did not automatically become requirements.
 
-- Logo 与 PinePi Home 放左上角，完整日期时间在其右侧；消息序号/总数及页点放左下角，设置和对话入口保留在右侧。
-- 使用现有 Compose Foundation 的 `HorizontalPager`，卡片跟随手指移动、松手吸附，短距离拖动回位；左滑更旧、右滑更新，首尾不循环。新消息到达重新选中最新一条；仅已停稳的当前卡片允许加载媒体/手动播放视频，拖动时停止视频，已解码图片保留显示。
+**0.7.1 layout:** logo/brand upper left, full date/time beside it, count/page indicators lower left, Settings/Chat on the right. Reuse `HorizontalPager` for drag-following cards, snapping, short-drag return, older-left/newer-right navigation, no looping, and newest selection on arrival. Only the settled card loads media or manually plays video; dragging stops video but preserves decoded images.
 
-### 0.7.0 外观与主题（用户已授权实现）
+**0.7.0 appearance:** Compose + Material 3 for the three main pages; native diagnostics unchanged. Fixed pine-green, warm light/subdued dark themes, no wallpaper/dynamic color, normal-weight equal-size date/time. Auto/Light/Dark selection persists; Auto is light 07:00 inclusive–19:00 exclusive. Foreground time/timezone changes and resume refresh it; no screen wake for theme changes. Stack: Kotlin 2.1.20 / SDK 35, BOM 2025.04.01, Activity Compose 1.10.1, runtime API 27. Device date was observed corrected to October 30, `auto_time=1` restored, timezone Asia/Shanghai retained; long-term RTC/NTP after power loss remains unverified.
 
-- 主三页迁移到 Material 3 Compose，保留现有交互与后台基础能力；隐藏 DiagnosticsActivity 继续使用原生 View。
-- 使用固定松绿色主色、柔和浅色与低亮度深色，不使用壁纸或 Android 12 动态取色；日期与时间仍同字号、普通字重。
-- 设置提供“自动 / 浅色 / 深色”，选择保存；自动按设备本地时间 07:00–19:00 为浅色，其余深色。亮屏恢复及前台时间/时区变化时更新，熄屏不因切主题被唤醒。
-- 兼容依赖锁定 Kotlin 2.1.20 / SDK 35、Compose BOM 2025.04.01 与 Activity Compose 1.10.1；运行基线继续 Android 8.1 / API 27。
-- 本轮观察到系统日期已校正至 2026-10-30，已恢复原 auto_time=1、保留 Asia/Shanghai；掉电后的 RTC/NTP 正确性仍需后续观察，自动主题依赖系统时间。
+**Final UI direction recorded October 30:**
 
-### 主 UI 已定方向（2026-10-30 后续确认）
+- Product name: **PinePi Home**, using the PinePi prefix.
+- Message-first, not a clock/message split. Header shows full date including year/weekday and 24-hour time with seconds, equal normal typography.
+- Keep only the newest ten local messages; remove the oldest on overflow. No per-item close/delete. A same-width “clear all local messages” action lives in Settings and does not clear Hub history.
+- One full-width message, horizontal paging, current position/count at bottom; latest is item 1. New arrivals select latest. History persists through restart using private `AtomicFile`. Do not forcibly leave Chat/Settings during interaction; screen-off arrival restores Messages. Recording/video interruption policy must be defined with actual business integration.
+- No wallpaper; reserve room for content. No Agent selector.
+- The original three separate text/image/video types and pending wire format were superseded by the October 31 v2 decision. Earlier 0.6.0 images/failures were synthetic-record tests; a video play entry and Bluetooth guard did not prove actual video/audio playback.
 
-- 正式终端名称为 **PinePi Home**，使用 PinePi 系列统一前缀。
-- 采用“消息为主”布局，不再使用时钟与消息左右并列的方案；顶部显示完整日期与时间（包含年份、月日和星期，线框示例为 24 小时时分秒）；时间与日期使用一致的字号和常规字重，不突出加粗时间。
-- **极简消息操作已定**：终端只显示并保留最新 10 条本地消息，超出时直接移除最旧消息；每条消息没有关闭/删除按钮。仅在设置中提供备用操作“清除所有本地消息”，作用于本地消息，不作为清除 Hub 历史的指令。**展示方式已定为单条全幅内容 + 左右滑动**，不使用消息列表与详情分栏。新消息到达时直接显示最新一条，左右滑动查看保留的其他消息；底部显示当前序号和总数（如“1 / 10 条消息”），最新一条为第 1 条。线框中左滑查看更旧消息、右滑回到更新消息，到首尾不循环；滑动方向与边界行为属于当前演示方案。0.6.0 将最近 10 条记录保存在应用私有目录，重启恢复；设置页提供同宽的一键清空。录音/视频播放期间新消息的最终业务处理仍待确认。
-- 暂不使用壁纸，把主要空间留给消息正文及消息配图。
-- **消息类型已定为三个独立类型：文本、图片、视频**，不做图文混排。文本消息显示文字；图片消息显示独立图片；视频消息显示独立视频。媒体消息可携带 URL，来源与时间作为通用元数据保留。具体字段、下载路径（终端直连还是 Hub 中转）、视频自动播放/声音规则、缓存与尺寸/时长限制仍待后续确认；0.6.0 已实现媒体展示组件（图片有上限下载、等比显示；视频手动播放入口与蓝牙保护），尚未接通线上媒体消息协议。图片/失败状态通过私有合成记录实测；视频实际播放待验证。
-- Agent 由 Hub 决定，终端不提供选择入口。现有测试 View 保留为二级隐藏调试页。
+## 3. V1 scope and interaction
 
-## 3. V1 范围与交互
+1. Full-screen local Home with AI Chat, Bluetooth music state, Hub state, native settings, and default-Home support.
+2. Bluetooth check before AI recording; explicit capture state with start/finish/cancel.
+3. Native recording upload to Hub, transcription and Agent reply display, permitted TTS; private output remains on-screen with fixed local notification audio as later agreed.
+4. **Hub chooses routing** (October 30). No terminal Agent list/current/default selector or requirement to submit `agent_id`. Terminal submits input and renders the result; detailed Hub routing is not frozen.
+5. Hub notifications show source/content and permitted audio/local prompts. **All user-facing arrivals wake an already-off display**, including normal/important notifications and conversation replies, irrespective of priority or optional Hub wake flags. Screen-on arrivals display normally. Wake does not grant recording/speech permission. Fixed-message wake with proximity disabled passed in 0.4.0; formal variants need their own acceptance.
+6. Handle authorization failures, disconnects, timeouts, and cancellation. Local Home/settings/Bluetooth music must work when the Hub is offline.
 
-1. 本地全屏主页：AI 对话、蓝牙音乐状态、Hub 连接状态、原生设置入口；可被选为默认 Launcher。
-2. AI 入口执行蓝牙检查；明确显示录音状态，支持开始、结束和取消。
-3. 原生录音并上传 Hub；显示转写及 Agent 回复；允许的回复播放 TTS，禁止朗读的内容只显示。
-4. **Agent 路由由 Hub 决定（2026-10-30 用户明确调整）**：终端不提供 Agent 列表、当前 Agent 或默认 Agent 的选择入口，也不要求用户指定 Agent 后才开始对话。终端提交用户输入并展示 Hub 返回的结果，具体路由策略在 Hub 内实现，尚未冻结。
-5. 接收 Hub 通知，显示来源与内容；按照 Hub 的最终指令显示、播放获准音频或本地提示音。**消息亮屏规则已定（2026-10-30）：收到任何面向用户的消息（包括普通消息、重要消息、通知和对话回复）时，只要屏幕处于熄屏状态，就点亮屏幕并展示消息，不按优先级筛选。**屏幕已亮时正常展示。此规则由终端统一执行，不依赖 Hub 可选的“是否亮屏”指令；亮屏不改变既有提示音、朗读和录音规则。0.4.0 已实测固定测试消息在接近唤醒关闭时独立点亮屏幕，正式业务消息接入尚未实施。
-6. 处理鉴权失败、网络断开、请求超时和取消；Hub 离线时本地主页、设置及原有蓝牙音乐功能仍可用。
+Draft flow: `idle → Bluetooth check → record → upload/process → display/optional playback → idle`. Cancel stops this recording/playback and notifies Hub; old replies must not leak into a newer request.
 
-**交互草案**：`空闲 → 蓝牙检查 → 录音 → 上传/处理 → 显示/可选播放 → 空闲`；取消应停止本轮录音/播放并通知 Hub，旧响应不得串入新一轮。
+Unfrozen suggestions: tap start/finish initially, VAD later. The discussed ~1.5-second silence and 30-second cap are experimental starting values, not final session requirements. Follow-up listening is undecided. Landscape is a recommendation; portrait, rotation, and orientation locking still require a decision.
 
-**尚未冻结的体验建议**：点击开始、再次点击手动结束可先用于验证；VAD 自动结束随后加入。原讨论的静音约 1.5 秒、最长录音 30 秒是试验初值，不是固定要求。自动追问窗口未定。默认横屏是建议；V1 是否同时提供竖屏、自动旋转及方向锁定仍待确认。
-
-## 4. 最小架构与职责
+## 4. Minimal architecture and ownership
 
 ```text
-手机 ──蓝牙音乐──> ThinkSmart View / Android 8
-                     └─ Home AI Launcher
-                          │ 局域网 WS：控制、文字、通知
-                          │ 局域网 HTTP：录音上传、音频/图片下载（待接入）
-                          ▼
-                     Home AI Hub
-                     ├─ 设备/会话与 Agent 注册、路由
-                     ├─ 隐私权限与输出策略
-                     └─ STT / Agent / TTS 接口
-                          └─ 不同来源的 Agent 与自有业务系统
+Phone ──Bluetooth music──> ThinkSmart View / Android 8
+                            └─ Home launcher
+                                 │ LAN WS: control, text, notifications
+                                 │ LAN HTTP: short recording upload (pending), media downloads
+                                 ▼
+                            Home AI Hub
+                            ├─ Device/session and Agent routing
+                            ├─ Privacy and output policy
+                            └─ STT / Agent / TTS adapters
+                                 └─ Agents and owned business systems
 ```
 
-| 组件 | 实施方向 |
+| Component | Direction |
 | --- | --- |
-| Android | 主 UI 采用 Kotlin + Material 3 Compose，原生 View 保留在隐藏调试页，单个 `app` 模块；`minSdk` / `targetSdk` 固定 27，`compileSdk` 35 仅用于构建。已用 AudioRecord、MediaPlayer 完成本地录音回放初步验证；WebView 不作为必需依赖。工具链见 README，具体实机验收边界见验证记录。 |
-| 系统设置 | 使用公共 Settings Intent；具体页面不可用时处理异常并提供可用的系统设置入口。保留原生桌面。 |
-| Hub | 单个 FastAPI service 部署在 Pi 4B `192.168.31.36`，systemd 以 alan 管理，独立 Python 3.13.18。LAN WS/HTTP、eth0 mDNS 和首次确认保留；已集成真实 Broadcast Mid WSS 文本订阅、心跳重连及最多 10 条待确认通知的持久化补送。终端 0.7.2 显示、保存后 ACK，本轮真实云端消息闭环通过。无需独立管理后台、MQTT Broker 或专用媒体服务器。 |
-| Agent | 首版只接一个 Hermes 实例，跨网络用 Tailscale，由 Hub 通过 HTTP API 适配。接口、凭证及允许输出在服务端配置，暂不建设通用注册表或多 Agent 编排。主动通知复用 Broadcast Mid，正常问答回复走 API 返回链路。Agent 负责其任务，Hub 负责接入与分发。 |
-| 本地配置 | 设备身份、Hub 地址、必要界面设置及缓存；Agent 路由由 Hub 决定，终端不保存 Agent 选择。设备鉴权材料如何保存待定；供应商及 Agent 密钥只在服务端。 |
+| Android | Kotlin + Material 3 Compose main UI, native hidden diagnostics, one app module; min/target 27 and compile 35 for building. AudioRecord/MediaPlayer local tests exist. No required WebView. See README/toolchain and device evidence. |
+| Settings | Public intents, exception handling/fallback when ROM pages are absent, original launcher retained. |
+| Hub | One FastAPI systemd service on Pi 4B `192.168.31.36`, user alan, isolated Python 3.13.18. LAN WS/HTTP, eth0 discovery, first consent, Mid WSS heartbeat/reconnect, ten durable pending messages, terminal save-before-ACK. No separate admin site, MQTT broker, or mandatory media server. |
+| Agent | One initial Hermes instance through Tailscale HTTP. Server-side endpoints/credentials/output permissions; no general registry or multi-Agent orchestration. Proactive Mid, interactive API responses. Agent owns its task; Hub owns access/distribution. |
+| Local configuration | Identity, Hub selection, UI choices, cache; no Agent selection. Terminal authentication storage remains undecided. Vendor/Agent keys stay server-side. |
 
-## 5. 协议草案（开发前统一为 protocol.md）
+## 5. Historical session-protocol drafts
 
-**已定传输分工**：终端主动连接 Hub；WebSocket JSON 负责连接、会话控制、文字和通知。HTTP POST 上传短录音，HTTP GET 获取 TTS 音频及图片。用户已明确：可信局域网 Hub → 终端按网关模式采用 WS/HTTP，无需本地证书；公网连接保持 WSS/HTTPS。公网身份、授权及证书部署细节仍待定；0.5.0 局域网终端暂不认证，首次需用户确认 Hub，控制测试接口另用 token。V1 不把音频编码为 Base64 塞入控制 JSON，也不要求实时二进制音频流。
+The accepted notification protocol is now [v2](docs/MESSAGE_PROTOCOL.md). The drafts below are retained as context and must not be implemented as an additional required notification protocol.
 
-原讨论的六个事件及统一信封为：
+Agreed transport ownership: terminal initiates Hub connection; WebSocket JSON carries connection/session control, text, and notifications. HTTP POST uploads short recordings; HTTP GET retrieves TTS/image/media files. Trusted LAN uses WS/HTTP; public connections WSS/HTTPS. Public identity/authorization/certificate deployment and upload details remain undecided. Discovery initially used no terminal authentication plus first consent; control probes use a token. No Base64 audio in control JSON or required real-time binary audio in V1.
 
-| 事件 | 方向 | 含义 |
+The original six candidate events were:
+
+| Event | Direction | Draft meaning |
 | --- | --- | --- |
-| `device.hello` | 终端 → Hub | 设备上线 |
-| `session.start` | 终端 → Hub | 开始会话，不要求终端选择或提交 `agent_id`；由 Hub 决定路由（具体结构待定） |
-| `session.cancel` | 终端 → Hub | 取消当前请求 |
-| `assistant.text` | Hub → 终端 | 文字回复 |
-| `assistant.audio` | Hub → 终端 | 获准音频的地址及媒体类型 |
-| `notification` | Hub → 终端 | 主动通知 |
+| `device.hello` | Terminal → Hub | Online |
+| `session.start` | Terminal → Hub | Start a session; Hub routes without terminal Agent selection |
+| `session.cancel` | Terminal → Hub | Cancel current request |
+| `assistant.text` | Hub → Terminal | Text reply |
+| `assistant.audio` | Hub → Terminal | Permitted audio URL/MIME |
+| `notification` | Hub → Terminal | Proactive notification |
 
 ```json
 {
   "type": "assistant.text",
-  "request_id": "<本轮请求ID>",
-  "payload": { "text": "<回复正文>" }
+  "request_id": "<current-request-id>",
+  "payload": { "text": "<reply-body>" }
 }
 ```
 
-录音上传和本轮异步消息使用同一个 `request_id`。终端需自动重连，并处理超时、取消及迟到响应。心跳、重连退避、结束/错误事件、文本增量或全量语义、重复消息处理仍需定稿。
+The same `request_id` would correlate upload and asynchronous replies. Reconnect, timeouts, cancellation, late results, heartbeat/backoff, end/error events, delta/full-text semantics, and deduplication still need a final session design.
 
-后续多 Agent 讨论进一步提出统一的展示消息：
+A subsequent multi-Agent discussion proposed a common presentation envelope:
 
 ```json
 {
   "type": "message",
-  "id": "<消息ID>",
-  "source": "<Hub已认证的Agent标识>",
-  "title": "<标题>",
-  "text": "<正文>",
+  "id": "<message-id>",
+  "source": "<Hub-authenticated-Agent-identity>",
+  "title": "<title>",
+  "text": "<body>",
   "presentation": {
     "mode": "display",
     "sound": "local_chime",
@@ -152,104 +148,95 @@
 }
 ```
 
-`presentation` 必须由 Hub 生成。**此格式与前述 `assistant.*` / `notification` 的替代或兼容关系尚未冻结**；先在 `protocol.md` 选定一种一致约定，勿当成两套必须同时实现的协议。获准音频引用、消息与会话的关联字段也在该步骤确定。
+`presentation` was to be generated by the Hub. Its relationship to `assistant.*`/`notification` was not frozen; these were alternatives, not two mandatory implementations. Permitted audio references and session correlation also needed definition.
 
-媒体建议：录音先测试 16kHz 单声道 PCM/WAV，TTS 先用 HTTP MP3 + 原生播放器。原对话中的接口路径、主机地址、设备 ID、token 名称均为示例；本文不提供可部署地址或凭证。真实路径、格式协商、上传上限、音频鉴权及失效时间待配置。
+Media suggestions: test 16 kHz mono PCM/WAV capture first and HTTP MP3 with native playback for TTS. Discussion endpoints, host addresses, device IDs, and token names were examples, not deployable credentials. Actual upload paths/limits, negotiation, audio authorization, and expiry remain to be configured.
 
-## 6. 隐私与多 Agent 路由政策
+## 6. Privacy and Agent routing policy
 
-**策略位置已定：Hub。**Agent 提供内容和建议标签；Hub 按已认证身份、可信配置、消息敏感级别与用户设置作最终决定；终端执行展示结果，不判断政治敏感性、不选择 TTS 供应商。
+**Policy lives at the Hub.** Agents supply content and suggested labels; Hub makes the final decision using authenticated identity, trusted configuration, sensitivity, and user settings. The terminal executes presentation, does not classify political sensitivity, and does not select TTS vendors.
 
-原讨论提出的默认策略如下，具体 Agent 名单和授权仍待配置：
+Original proposed defaults, with actual identities/permissions pending:
 
-| Agent 角色 | 默认输出 | 外部 TTS |
+| Agent role | Default output | External TTS |
 | --- | --- | --- |
-| 风险观察 | 屏幕，可加本地固定提示音 | 禁止 |
-| 日常事务 | 屏幕及语音 | 允许普通内容 |
-| 自有业务 | 屏幕 | 默认禁止 |
-| 家庭助手 | 屏幕及语音 | 仅允许获准内容，私人信息另行限制 |
+| Risk monitoring | Display, optional fixed local prompt | Forbidden |
+| Daily tasks | Display and voice | Ordinary content allowed |
+| Owned business | Display | Forbidden by default |
+| Family assistant | Display and voice | Approved content only; separate restrictions for private data |
 
-- 默认按 Agent 的任务、数据权限和供应商配置划定信任边界；地区不是安全保证。Agent 不能凭消息内的 `public`、`trusted` 或 `source` 自报字段提升权限。
-- 内容分级草案为 `public`、`personal`、`sensitive`、`local_only`。敏感内容只显示或使用本地提示音；`local_only` 必须在调用任何外部 STT、LLM、工具或 TTS **之前**阻止外发。高优先级不能越过隐私限制。
-- 文字展示与 TTS 独立：合成失败、被拒绝或禁用不能让原始提醒丢失。风险提醒应保留来源、事件时间及不确定性，区分事实与推测。
-- Agent 的选择与路由由 Hub 决定；终端不提供 Agent 选择界面。Agent 注册、地址、认证、权限及路由配置在 Hub。具体路由规则与是否需要跨 Agent 编排尚未定稿，不据此默认实现复杂编排。
-- 主动通知按发送 Agent 的身份校验和路由；对话由 Hub 决定路由。各 Agent 仅获其任务所需数据，不能默认共享业务、家庭或其他 Agent 的上下文。
-- 仅在用户触发后录音。原讨论建议录音处理后清理、对话历史由用户控制；具体保留期限、日志脱敏、通知存储与删除机制待定。不要把原始音频、敏感正文或密钥写入普通日志。
-- 公网 TLS 保护传输，不阻止 Hub 或被调用供应商看到其处理的数据；局域网按用户确定的可信网关模式使用 WS/HTTP。禁用第三方 TTS 只减少该环节的披露，不能把使用云端 Agent/STT 的全过程称为本地私有。
+- Bound trust by tasks, data permissions, and provider configuration, not geography. Self-claimed `public`, `trusted`, or `source` fields cannot elevate Agent permissions.
+- Draft classifications: `public`, `personal`, `sensitive`, `local_only`. Sensitive output stays on-screen or uses fixed local prompts. Block `local_only` before any external STT, LLM, tool, or TTS call. Priority cannot bypass privacy.
+- Display and TTS are independent: failed/rejected/disabled synthesis must not discard the reminder. Risk notices retain source, event time, and uncertainty; distinguish facts from inference.
+- Hub owns Agent selection/routing and server-side registration/address/auth/permission configuration. No terminal selector. Detailed routing and cross-Agent orchestration are not implicitly authorized.
+- Validate/route proactive notifications by sending Agent identity. Agents receive only task-required data; do not share business/family/other-Agent context by default.
+- Record only after a user trigger. Cleanup after processing and user-controlled conversation history were proposed; retention, log redaction, notification deletion, and exact history policy require explicit design. Do not log raw audio, sensitive bodies, or keys.
+- Public TLS protects transit, not data from the Hub/provider processing it. Trusted LAN uses the agreed WS/HTTP model. Disabling third-party TTS reduces disclosure at that stage; it does not make cloud Agent/STT processing entirely local/private.
 
-## 7. 暂缓与不纳入 V1 的功能
+## 7. Deferred or excluded from V1
 
-- Linux 移植、换 ROM、定制内核/驱动、系统精简、Kiosk 启动画面工程：已退出当前路线。
-- 常驻麦克风监听、唤醒词、全双工、语音打断、AEC、蓝牙与 AI 混音/自动压低音乐：暂不实现。
-- NAS 音乐已取消当前需求；FM 推流、视频流、跨房间同步、通用远程终端平台不作为 V1 前置条件。
-- 全流式 STT/TTS、按句合成队列、本地语音模型、复杂多 Agent 自动路由、完整 Hub 管理 UI：待基础闭环和实际体验验证后再评估。
-- 私人模式开关、自动追问、完整双方向布局只是讨论建议，不自动加入首版。接近感应唤醒已由用户明确纳入开发：2026-10-29 的 0.3.0 已完成一次熄屏亮屏实测，长期与重启行为仍待验证。
+- Linux port, ROM replacement, custom kernel/drivers, system stripping, kiosk boot artwork: outside the current route.
+- Always-on microphone, wake word, full duplex, speech interruption, AEC, Bluetooth/AI mixing or automatic ducking: not now.
+- NAS music was canceled as a current requirement. FM/video streams, room synchronization, and a general remote-terminal platform are not prerequisites.
+- Fully streaming STT/TTS, sentence queues, local speech models, complex multi-Agent routing, and a full Hub admin UI require later experience/validation.
+- A private-mode UI toggle, automatic follow-up, and complete dual-orientation layouts were only proposals. Proximity wake was explicitly approved and tested in 0.3.0; later records qualify long-term/reboot behavior.
 
-## 8. 验证与验收顺序及当前进度
+## 8. Validation order and progress
 
-**2026-10-29 顺序更新**：用户离开前先完成了前台传感器测试，随后要求立即实现熄屏接近唤醒；0.3.0 已安装并通过本轮亮屏验证。其余长期验证及 Hub 协议与网络闭环待后续继续；Hub 的部署位置仍未确定。
+The October 29 order changed: foreground sensor tests were completed, then screen-off proximity wake was requested immediately and accepted on 0.3.0. Hub deployment/protocol work followed later; historical statements about an undecided host refer to that time.
 
-1. **记录设备基线**：核对型号、Android 小版本、ROM 构建号；保留蓝牙播放已通过的记录，不重新开发该能力。
-2. **先验本地 APK**：设为默认桌面并验证开机/Home 返回、原生设置与维护入口；录音后回放；测 A2DP 状态、提示断开、取消及断开后的恢复。确认未触发时不采集，停止后释放麦克风。
-3. **接近检测与熄屏唤醒（已提前执行）**：前台近/远读数可重复；0.3.0 的熄屏接近亮屏与关闭后释放已实测通过。2026-10-30 用户确认重新通电后仍可接近唤醒；长时间休眠与深度待机仍待验证。音量键已验证可唤醒，保留为备用；触屏唤醒尚未实现。
-4. **再定 Hub 协议并验网络闭环**：局域网部署、自动发现、首次确认及测试消息闭环已推进；正式协议仍待确认。随后局域网 WS 连接 Hub，短录音经 HTTP → STT → 指定 Agent → 文字 → 获准 TTS；检查请求关联及停止播放。验证任何消息在熄屏时到达都会亮屏，不区分普通或重要；同时实测长时间熄屏后的消息接收可靠性。
-5. **验策略边界**：风险/业务来源不触发外部 TTS；敏感标签不因高优先级被放宽；伪造来源/低敏标签不能提权；`local_only` 在外发前拦截；TTS 失败仍能显示文字和来源。
-6. **验路由与故障**：Hub 路由符合已确认的策略，终端无需选择 Agent；断网/重连、Hub 离线、超时、取消后的迟到回复不会串台或重复播音。蓝牙音乐与设置仍可使用。
-7. **实机体验**：用同一批成人/儿童中文、英文及混合语音比较 STT；用短答、双语文本及故事试听 TTS；记录端到端延迟、连续运行和休眠恢复结果。阈值及持续测试时长待定，不引用早期估算作为已达成指标。
+1. Record model, Android point release, and ROM build. Preserve verified Bluetooth music instead of redeveloping it.
+2. Validate local APK/default Home/boot/Home return/settings/original launcher, capture/replay, Bluetooth checks and cancellation. Confirm no unsolicited capture and prompt microphone release.
+3. Foreground near/far, screen-off wake, switch-off cleanup; 0.3.0 passed. User confirmed wake after power restore October 30. Long/deep standby pending. Volume buttons remain a verified backup; touch wake is not implemented.
+4. Deploy/discover/confirm Hub and validate the network loop, then short HTTP upload → STT → Hub-routed Agent → text → permitted TTS, request correlation, and stop. Verify all message arrivals wake an off display and test long screen-off reliability separately.
+5. Policy boundaries: risk/business content cannot trigger external TTS, priority cannot lower sensitivity, claimed identities cannot elevate access, local-only blocks before external calls, failed TTS preserves display/source.
+6. Routing/failures: no terminal Agent choice; disconnect/reconnect/offline/timeouts/canceled late replies must not cross sessions or repeat audio. Preserve Bluetooth/settings usability.
+7. Real experience: compare STT on the same adult/child Chinese, English, and mixed recordings; audition short answers, bilingual text, and stories. Measure actual latency, extended operation, and sleep recovery. Thresholds/durations remain undecided; early estimates are not achieved metrics.
 
-## 9. 开发前待定清单
+## 9. Remaining decisions
 
-- Hub 已部署到 RPi 5（SSH `192.168.1.50`，局域网监听 `0.0.0.0:8766`，wlan0 广播当前地址 `192.168.2.109`，用户 alan），系统为 Debian 13 / aarch64 / Python 3.13.5。局域网 WS/HTTP 无需证书的原则已由用户确认；正式设备身份、Agent 鉴权与公网服务证书/密钥供应方式仍待用户许可后确定。
-- 最终协议版本、事件信封、错误/完成语义、上传与媒体接口、权限校验及取消行为。
-- STT/TTS 供应商、模型、地域、音色及数据政策。原讨论多次调整候选，**没有最终选定供应商**；腾讯/OpenAI/Google 等 STT、CosyVoice/腾讯/其他云 TTS/Piper 均不能直接写死。后续隐私策略优先于早期推荐。
-- 首个接入 Agent、实际接口、每设备可用列表、默认映射、会话历史隔离及 Agent 不可用时的处理方式。
-- Android 工具链首版已固定（见 README），后续新增依赖仍需验证；VAD 位置和参数、旋转范围、录音/历史/媒体保留期限及验收阈值待定。
+The original checklist predated later decisions: the initial Pi 5 deployment was replaced by Pi 4B, Hermes was selected as the first Agent, and Baidu was selected for initial TTS on October 31. Earlier unselected-provider notes are historical, not permission to hard-code another vendor.
 
-先完成本地硬件验证与最小协议定稿，再接真实服务；未定项显式配置或记录，不以示例地址、虚构密钥和未经验证的能力补齐。
+Remaining items include formal conversational/upload/error/completion/cancel semantics; actual Agent endpoint/auth/history isolation and unavailable handling; STT vendor/model/region; Baidu credentials/voice/data policy; VAD location/parameters; orientation scope; recording/history/media retention and acceptance thresholds. Android toolchain is pinned in README, but added dependencies still need compatibility checks. Device authentication and public certificate/key provisioning need explicit design within the approved network boundary.
 
+Complete the hardware baseline and minimal protocol before real service integration. Record unresolved items or expose configuration instead of inventing addresses, keys, or unverified capabilities.
 
-### Hub 更换树莓派（2026-10-30）
+## Subsequent implementation records
 
-当前目标 `alan@192.168.31.36`，Raspberry Pi 4B / Debian 12；隔离 Python 3.13.18，系统 Python 不替换。Hub 路径仍为 `/home/alan/pinepi-thinksmart-view/hub`，systemd enabled/active，发现使用 `eth0`（当前同时有 `.36`/`.37` 地址）。旧机无法访问，本轮新建 Hub 身份，用户已在 ThinkSmart 确认，新 Hub 固定消息与同 ID 回执通过。完整测试 13 passed / 1 failed（合成 HTTPS/WSS 握手超时未定因），局域网 HTTP/WS 和服务恢复通过。详见 `docs/HUB_MIGRATION.md`，不把新机配置自启等同于已做整机重启测试。
+### Hub moved to another Raspberry Pi (2026-10-30)
 
+Current host: `alan@192.168.31.36`, Pi 4B / Debian 12, isolated Python 3.13.18, unchanged system Python, project `/home/alan/pinepi-thinksmart-view/hub`, enabled/active systemd, eth0 with `.36`/`.37`. Old host was unreachable; a new Hub identity was generated and confirmed on ThinkSmart. Fixed message and matching ACK passed. Migration suite: 13 passed / 1 failed (unresolved synthetic HTTPS/WSS timeout); LAN and recovery passed. See [Migration](docs/HUB_MIGRATION.md). Configuration alone did not validate a new-Pi reboot.
 
-### Broadcast Mid 文本接入（2026-10-30）
+### Broadcast Mid text (2026-10-30)
 
-用户确认先接 `event.title` + `event.content` 文本。云端 `wss://hail.lonelyassistant.com/ws/`，最终正确设备名 **`pinepi-home-hub`**；曾误写 `pine-pi-home-hub` 导致鉴权拒绝，已在私有配置及工具默认值更正，原 Token 未改动。真实 WSS TLS 校验、应用心跳和单条云端通知通过；终端 0.7.2 / code 14 确认 UI 来源、正文、私有记录和同 ID 回执。Hub/LAN 回归 22 passed，既有本地合成 WSS 1 项未参与；Android 29 项通过，Lint 0 errors / 6 warnings。详情见 `docs/BROADCAST_MID.md`。
+Approved initial `event.title` + `event.content`. Public endpoint `wss://hail.lonelyassistant.com/ws/`, correct device **`pinepi-home-hub`**; an extra hyphen (`pine-pi-home-hub`) caused authentication rejection and was corrected in private configuration/tool defaults without changing the token. Real WSS certificate validation, heartbeat, and one cloud notification passed. Terminal 0.7.2 / code 14 showed source/body, saved privately, and ACKed. Hub/LAN 22 passed, one existing synthetic WSS test excluded; Android 29 tests, Lint 0 errors / six warnings. See [Mid setup](docs/BROADCAST_MID.md).
 
-本轮 USB ADB 超时且重连后不枚举；用户按“拔 USB→断电等待→仅通电进入桌面→接 A→C”恢复，序列号 HUA0BQMQ 显示 device，原授权有效无需弹框。已直接 ADB 更新，未使用浏览器安装备用方案。
+USB shell timed out and reconnect lost enumeration. The user recovered with USB unplug → power off/wait → power-only boot to Home → A-to-C data. `HUA0BQMQ device` returned without another RSA prompt. ADB installed directly; no browser-install fallback was used.
 
+### 0.7.3 long-text boundaries (2026-10-30)
 
-### 0.7.3 长文边界修复（2026-10-30）
+The old 2048-byte adapter rejected a 2002-character / 5878-byte Chinese article (`ignored=1`). Limits became 8192 UTF-16 units / 32 KiB UTF-8, 64 KiB frame, 512 KiB pending storage. Oversize produces `content_too_long`, not truncation; legacy non-text remains unsupported. Version 0.7.3 / code 15 installed; the resent article preserved both ends, storage, and matching ACK. Hub/LAN 25 passed / one deselected; Android 29 tests and Lint passed with six existing warnings.
 
-旧版文本兼容层正文上限 2048 UTF-8 字节，导致用户 2002 字/5878 字节中文文章被过滤（ignored=1）。现改为最多 8192 UTF-16 单位、32 KiB UTF-8 正文，通知帧 64 KiB，Hub 待送文件 512 KiB，匹配终端历史读取容量。超限明确记录 content_too_long，不做静默截断；非文本仍不支持。0.7.3 / code 15 已安装，用户重发长文首尾、落盘、同 ID ACK 通过。Hub/LAN 25 passed / 1 deselected，Android 29 项和 Lint 检查通过（6 个既有提示）。
+### Custom notification source (2026-10-30)
 
+Approved `event.source` as a display name, absent/blank fallback Broadcast Mid, not inferred from Producer token. Hub validates type and 100 UTF-16 units. Existing terminal source support needs no APK change; title/content-only senders remain compatible. Historical source names stay as originally received. Examples: [Mid setup](docs/BROADCAST_MID.md).
 
-### 自定义通知来源（2026-10-30）
+### 0.7.4 visual details (2026-10-30)
 
-用户已批准读取 Mid `event.source` 作为来源展示，缺少/空白时保留 Broadcast Mid；来源为发送方声明的名称，不自动从 Producer Token 推断。Hub 校验类型及最多 100 UTF-16 单位后转发，终端现有 source 支持可直接使用，无需升级 APK。旧的 title/content 客户端继续兼容；可用带 source 的 curl 单独发送。历史记录保持接收时的来源。配置示例见 `docs/BROADCAST_MID.md`。
+Approved logo 26→30dp, brand 15→17sp, title/body gap 14→36dp. Arrival used a 320ms alpha 0.55→1 fade and 12dp rise with no looping. MainActivity emits only on newest-ID change; Messages consumes the event once. Startup/history/paging/settings return do not retrigger. Chat/Settings stays open on arrival; later Messages return consumes the latest event. Draw-layer animation avoids rebuilding media. Code 16 installed; 54px title gap, full date, newest selection, paging, and recorded alpha/position change passed.
 
+### 0.7.5 pure fade (supersedes the rise)
 
-### 0.7.4 终端视觉细节（2026-10-30，用户授权）
+Old content fades for 160ms, changes while transparent, then new content fades for 200ms without movement. New arrivals only; initial content only fades in. Rapid arrivals cancel an older transition. New paging starts at item 1 during transition to avoid stale callbacks overwriting newest selection. Media/gestures pause during transition. Code 17 installed; silent recordings confirmed fade without movement, newest selection, and paging.
 
-左上 Logo 26→30dp，PinePi Home 15→17sp；标题/正文间距 14→36dp，对应一行正文的空白。新消息到达使用 320ms 淡入（alpha 0.55→1）及 12dp 上移，不循环。MainActivity 仅在最新消息 ID 变化时发出一次事件，消息页消费；启动历史、手动翻页及设置返回不重复触发。在设置/对话页收到消息时保持原页，回到消息页显示最新未消费消息的入场效果。动画只读绘制层，不重建媒体组件。0.7.4 / code 16 已安装，实机间距 54px、完整日期、新消息选中与翻页通过，录屏可见透明度及边界位置变化。
+### 0.7.6 cinematic fade (supersedes the faster fade)
 
+The user found 0.7.5 too flash-like. Use 700ms fade-out + 150ms blank + 1200ms fade-in, 2050ms total, smooth easing, alpha only on internal content, fixed card background/position/size. Arrival consumption, latest priority, and paging remain. Code 18 installed.
 
-### 0.7.5 新消息纯淡出/淡入（2026-10-30，覆盖 0.7.4 上移动效）
+### 0.7.7 scroll hint
 
-用户要求取消上移，已实现旧卡片淡出 160ms → 透明处换内容 → 新卡片淡入 200ms，保持位置不动。只消费新到达事件；冷启动历史、手动翻页及设置返回不重复播放。首次无旧卡片可见时仅淡入；快速连续消息取消旧过渡并显示最新。为避免切换时旧分页回调覆盖最新选择，切换阶段新分页固定从第 1 条开始；媒体活动与分页手势在过渡期间暂停。0.7.5 / code 17 已安装，静音录屏证实透明度先降后升、顶部与卡片内部同步无位移，最新消息显示及手动翻页均通过。
+A centered single downward chevron appears only when `ScrollState.canScrollForward`, hides at the end, and returns when scrolling back. Original area 28dp, icon 24dp, no text overlay, click, or looping. Short text/images/videos have no hint. Accessibility text: “下方还有内容” (more content below). The area shares the text ScrollState through native `scrollable`, supporting drag/inertia from near the arrow. Arrival fading remains. Reference: [NN/g](https://www.nngroup.com/articles/scrolling-and-attention/).
 
+### 0.7.8 double-chevron and tap hint
 
-### 0.7.6 电影文字式渐变（2026-10-30，覆盖 0.7.5 快速过渡）
-
-用户反馈 0.7.5 太快像闪一下，要求类似电影屏幕文字。现采用 700ms 内容淡出 + 150ms 留白 + 1200ms 内容淡入，总计 2050ms，沿用平滑缓动；只对消息卡片内部内容应用 alpha，卡片底色、位置与尺寸保持稳定，无位移。新消息事件消费、最新优先和翻页规则保持。实机 0.7.6 / code 18。
-
-
-### 0.7.7 长文滚动提示（2026-10-30，用户授权）
-
-参考常见的滚动 signifier 原则，在文本卡片内部底部居中显示单个向下 chevron。使用 ScrollState.canScrollForward，只有下方还有内容时显示；到底隐藏，回滚后恢复。提示区固定 28dp、图标 24dp，不覆盖文字、不是点击按钮、无循环动效；短文本、图片、视频无箭头。可访问名称“下方还有内容”。提示区也用原生 scrollable 连接同一 ScrollState，从箭头附近起手照常拖动/惯性滚动。新消息文字淡入淡出保持。参考：https://www.nngroup.com/articles/scrolling-and-attention/ 。
-
-
-### 0.7.8 双箭头及点击提示（覆盖 0.7.7 的非点击设计）
-
-用户要求减少底部留白、箭头在下方空白区域垂直居中、点击 Toast，以及双层向下无尾箭头。文本卡片底部外 padding 从 28dp 改为 0dp、提示区 32dp，使总留白 56→32dp；非文本媒体保持原内边距。24dp 双层向下 chevron 在提示区居中，48dp 宽点击区域只显示默认 Toast“请向上滑显示全部内容”，不自动滚动。连续点击取消上一次 Toast 避免排队，离页取消；提示区同样响应拖动/惯性，滑动应取消点击。消息末尾隐藏、回滚恢复、短消息不显示保持。
+Supersedes the non-click design: remove 28dp outer bottom padding, use a 32dp area (total 56→32dp), centered 24dp double down-chevron, 48dp-wide tap target. Show only the default Chinese Toast “请向上滑显示全部内容”; do not auto-scroll. Repeated taps replace the Toast; leaving cancels it. Dragging/inertia still works and cancels clicks. End/short-message visibility rules and non-text padding remain.

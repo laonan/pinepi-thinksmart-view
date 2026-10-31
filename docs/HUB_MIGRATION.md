@@ -1,31 +1,33 @@
-# Hub 迁移记录 · 2026-10-30
+# Hub migration record — 2026-10-30
 
-迁移目标为 `alan@192.168.31.36`（主机 `blue62a`），实测型号 Raspberry Pi 4 Model B Rev 1.1，Debian 12 / aarch64。旧机 `192.168.1.50` 网络不可达，未从旧机读取私有配置或停用旧服务。Mac 项目 `hub/` 是本次代码来源。
+**English** | [中文版](HUB_MIGRATION.zh-CN.md)
 
-## 运行环境与配置
+Destination: `alan@192.168.31.36`, host `blue62a`, verified Raspberry Pi 4 Model B Rev 1.1, Debian 12 / aarch64. The old host at `192.168.1.50` was unreachable; its private configuration was not read and its service was not stopped. The Mac project's `hub/` directory supplied the source.
 
-- 系统 Python 3.11.2 保持不变；通过用户目录内 uv 0.13.6 安装独立 CPython 3.13.18。
-- uv 路径 `/home/alan/.local/share/pinepi-bootstrap/bin/uv`；托管解释器位于 `/home/alan/.local/share/uv/python/`，运行时也必须保留。
-- 项目 `/home/alan/pinepi-thinksmart-view/hub`，专用虚拟环境 `.venv`；按 `requirements.lock` 安装，`pip check` 通过。
-- 服务 `/etc/systemd/system/pinepi-hub.service`，User/Group 为 `alan`，已 enabled / active，独立于 SSH 常驻。
-- 运行参数文件 `/etc/pinepi-hub/runtime.env`，示例在 `hub/deploy/runtime.env.example`。
-- 参数为 `--host 0.0.0.0 --discover --discovery-interface eth0 --link-test-config /home/alan/.config/pinepi-hub/link-test.json`。
-- 私有 JSON 为 0600，目录 0700；本轮生成新 UUID，用户已手动在终端点“确认连接”。不将控制 token 写入源码、迁移包或报告。
-- `eth0` 当前同时持有 `192.168.31.36` 和 `.37`，独立 mDNS 浏览确认两条广播具有同一 Hub UUID，均为 8766 端口；未擅自修改主机网卡配置。
-- ThinkSmart 本轮 Wi-Fi 地址为 `192.168.31.186`，应用不需要手工写入 Hub 地址。
+## Runtime and configuration
 
-首次安装流程为：复制纯源码 → 创建独立 Python/venv → 安装锁定依赖 → 安装项目 → 测试 → 生成私有配置 → 安装 systemd 单元和运行参数 → `daemon-reload` → `enable --now` → 服务恢复测试 → 终端确认与固定消息验证。
+- System Python 3.11.2 was left unchanged. uv 0.13.6 in the user's home installed isolated CPython 3.13.18.
+- uv: `/home/alan/.local/share/pinepi-bootstrap/bin/uv`; managed interpreter: `/home/alan/.local/share/uv/python/`. Keep these paths for runtime operation.
+- Project: `/home/alan/pinepi-thinksmart-view/hub`, dedicated `.venv`, dependencies from `requirements.lock`; `pip check` passed.
+- Service: `/etc/systemd/system/pinepi-hub.service`, User/Group `alan`, enabled and active, independent of SSH.
+- Arguments: `/etc/pinepi-hub/runtime.env`; example: `hub/deploy/runtime.env.example`.
+- Arguments used: `--host 0.0.0.0 --discover --discovery-interface eth0 --link-test-config /home/alan/.config/pinepi-hub/link-test.json`.
+- Private JSON files use 0600 and their directory 0700. A new UUID was generated for this migration and explicitly confirmed on ThinkSmart. Control tokens were not put in source, migration archives, or reports.
+- `eth0` held both `192.168.31.36` and `.37`. Independent mDNS browsing confirmed both advertisements used the same UUID and port 8766. Host interface configuration was not changed.
+- ThinkSmart's Wi-Fi address in this round was `192.168.31.186`; no manual Hub address entry was needed.
 
-后续迁移应携带私有 JSON 以保留身份，并按新机器的用户名、项目目录、网卡调整 systemd/运行参数；虚拟环境应在目标机器重建，不复制旧 `.venv`。若新建身份，终端需要再次确认。相同身份不可在两台 Hub 同时长期运行。
+Initial deployment sequence: copy source only → create isolated Python/venv → install locked dependencies → install project → test → generate private configuration → install systemd unit/arguments → `daemon-reload` → `enable --now` → recovery tests → terminal confirmation and fixed-message check.
 
-## 已验证与限制
+Future migrations should carry the private JSON to preserve identity and adapt usernames, project paths, and interfaces. Recreate the venv on the destination instead of copying the old `.venv`. A new identity requires another terminal confirmation. Do not run the same identity on two Hubs for sustained operation.
 
-服务健康、enabled 配置、异常退出自动重启、手动停止保持停止、再次启动恢复通过。未重启整台新树莓派，因此仅确认开机自启配置，不声称真实冷启动验收完成。
+## Verified results and limits
 
-独立 mDNS 浏览通过；用户确认前控制接口显示 0 个连接，确认后 1 个。固定消息 `f00e486614f34223bdd47d9998d878c6` 发送 1 次，收到同 ID 回执，`wake_requested=false`；只据此确认消息到达与回执，不将本轮当作熄屏消息唤醒测试。
+Health, enabled configuration, crash restart, persistent manual stop, and subsequent start recovery passed. The new Pi was not rebooted in this round; boot configuration does not prove an actual cold-start recovery.
 
-完整测试最终为 **13 passed / 1 failed**；失败为合成 HTTPS/WSS 握手超时，隔离复查仍失败，开启诊断日志时曾通过一次，未确定根因。没有增加超时、跳过或屏蔽此测试。当前用户确定的局域网 HTTP/WS 链路通过；公网 TLS 链路与上游对接仍不能据此验收。测试另有既有 Starlette/httpx 弃用提示。
+Independent mDNS browsing passed. The control endpoint showed zero connections before confirmation and one afterward. Fixed message `f00e486614f34223bdd47d9998d878c6` was sent once and received a matching ACK with `wake_requested=false`. This establishes delivery/acknowledgement, not a screen-off wake test.
 
-USB ADB 枚举正常，但本轮 `input keyevent KEYCODE_WAKEUP` 命令长时间未返回，已终止自己启动的检查进程；终端确认由用户手动完成，验收依据为 Hub 同 ID 回执，没有伪称读到 UI 文字或测到屏幕状态。
+The final migration suite recorded **13 passed / 1 failed**. Synthetic HTTPS/WSS handshakes timed out, including an isolated rerun; enabling diagnostic logging once passed. The cause was unresolved. Timeouts were not increased and the failure was not skipped/suppressed. The agreed LAN HTTP/WS path passed; this round alone cannot accept public TLS/upstream integration. The existing Starlette/httpx deprecation warning was also retained.
 
-证据：`hub/reports/service-migration.json`、`pytest-migration.xml`、`migration-discovery.json`、`hub-migration-link.json`、`migration-source-hashes.json`。
+USB ADB enumerated, but `input keyevent KEYCODE_WAKEUP` did not return promptly and the task's check process was stopped. The user performed terminal confirmation manually. Acceptance relies on the matching Hub ACK, not an unobserved UI or screen state.
+
+Local evidence: `hub/reports/service-migration.json`, `pytest-migration.xml`, `migration-discovery.json`, `hub-migration-link.json`, and `migration-source-hashes.json`. Raw reports stay local and are not repository attachments.
