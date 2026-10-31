@@ -30,7 +30,7 @@ def fetch(request, limit):
 
 
 def validate_submission(message):
-    """Only Hub HTTP input may omit TTS speech; terminal wire JSON stays strict."""
+    """Hub producer input (HTTP or Mid) may omit TTS speech; terminal wire JSON stays strict."""
     if (isinstance(message, dict) and message.get('kind') == 'TEXT'
             and message.get('text_mode') == 'TTS' and 'speech' not in message):
         probe = dict(message, speech={'url': 'https://pinepi.invalid/pending.mp3', 'mime_type': 'audio/mpeg'})

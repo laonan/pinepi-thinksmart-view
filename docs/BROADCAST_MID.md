@@ -94,3 +94,19 @@ curl -sS 'https://hail.lonelyassistant.com/api/send' \
 ```
 
 Use the Producer token here, not the Hub's subscription token. Older clients limited to title/content remain compatible; curl can send additional supported fields.
+
+### TTS submissions through Broadcast Mid
+
+The Producer web form defaults to Hub synthesis. Send `TEXT` / `text_mode: "TTS"` without `speech` inside the Mid `event`. Mid forwards the submission unchanged; the updated Hub subscriber validates it as producer input and uses the same synthesis path as `POST /api/messages`. Only after synthesis/cache completion does the Hub validate, persist and send the complete terminal message with a real `speech.url`. Existing explicit MP3 URLs skip synthesis. PRIVATE and legacy v1 text never call the provider.
+
+This requires updating the Hub subscriber as well as the Mid web form, and configuring `--baidu-tts-config`, `--media-directory` and `--media-base-url`. The configured LAN URL must serve the generated MP3 to the terminal. Provider/configuration errors leave the message unqueued and expose a body-free `broadcast_mid.last_rejection` reason in authenticated `/_test/status`; Mid HTTP acceptance does not prove synthesis or terminal playback. Retry an unsuccessful submission with its original ID; once accepted, the same ID is deduplicated. Use a new ID to intentionally send identical text again.
+
+The subscriber bounds pending synthesis to ten tasks and continues processing application pings and PRIVATE messages while synthesis is slow. Overflow records `tts_submission_queue_full`; no incomplete TTS message is forwarded.
+
+### Uploaded images, MP3 audio and MP4 video
+
+Mid is only the relay/upload store, never a TTS provider. The demo has four message kinds and a separate severity selector. Its IMAGE/AUDIO/VIDEO flow uploads a local file, then publishes `media_id` with an outer authenticated `media.delivery`. The terminal never receives `mid://` URLs or Mid credentials.
+
+With `--media-directory` and terminal-accessible `--media-base-url` configured, the Hub downloads only from its configured Mid HTTPS origin, using its Device Token and the delivery ticket. It rejects redirects and NONE bypasses, verifies the complete size/SHA-256, atomically persists the file, rewrites the event to its LAN `/media/` URL and saves the message before sending `media.cached`. Transient downloads retry up to three times with ticket refresh; restarts/reconnects reuse verified files. Mid cleanup does not remove Hub history media. Confirmation responses are transport metadata, not terminal messages.
+
+`--media-cache-bytes` defaults to 536870912 (512 MiB); the cache also bounds managed files to 10000. Only `mid-*` uploaded content counts against this cache (TTS has its separate cache). It never automatically evicts files still potentially referenced by terminal history; a full cache rejects new downloads and reports `media_cache_full`. Safely managing historical-reference-based eviction remains separate work. Incomplete temporary downloads older than ten minutes are cleaned at cache startup. Supported terminal limits are images 8 MiB, MP3 16 MiB and MP4 100 MiB. Errors appear as body/URL-free reasons in authenticated `/_test/status` under `broadcast_mid.last_rejection`.

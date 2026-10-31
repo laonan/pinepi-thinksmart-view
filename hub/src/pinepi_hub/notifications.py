@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from uuid import uuid4
 from .message_protocol import ProtocolError, validate_message
+from .baidu_tts import validate_submission
 
 
 MAX_TEXT_UNITS = 8192  # UTF-16 code units, matching Kotlin String.length.
@@ -13,7 +14,7 @@ MAX_FRAME_BYTES = 64 * 1024
 MAX_STATE_BYTES = 512 * 1024
 
 
-def decode_notification(packet):
+def decode_notification(packet, *, allow_hub_tts=False):
     if not isinstance(packet, dict):
         return None, 'invalid_event'
     event = packet.get('event', packet)
@@ -22,7 +23,8 @@ def decode_notification(packet):
     # Explicit protocol fields must never fall through to the legacy text adapter.
     if any(key in event for key in ('version', 'kind', 'text_mode', 'speech', 'media', 'severity')) or event.get('type') == 'home.message':
         try:
-            return validate_message(event), None
+            validator = validate_submission if allow_hub_tts else validate_message
+            return validator(event), None
         except ProtocolError as error:
             return None, str(error)
     title, text = event.get('title', ''), event.get('content')

@@ -44,7 +44,7 @@ Broadcast Mid accepts a complete v2 object inside `event`, or a direct complete 
 
 ## Optional Hub-managed Baidu TTS (0.8.1)
 
-This is an HTTP publishing convenience; **the WebSocket v2 format is unchanged**. For `POST /api/messages`, take the ordinary TEXT/TTS example below and omit `speech`. With Baidu enabled, the Hub generates narration from `text` only, adds the required `speech` object, validates the complete wire message, persists it, and forwards it. A supplied `speech` URL is used as-is without a Baidu call. `PRIVATE`, IMAGE, AUDIO, VIDEO, and legacy messages do not trigger this synthesis path.
+This is a Hub publishing convenience; **the WebSocket v2 format is unchanged**. For `POST /api/messages`, take the ordinary TEXT/TTS example below and omit `speech`. With Baidu enabled, the Hub generates narration from `text` only, adds the required `speech` object, validates the complete wire message, persists it, and forwards it. A supplied `speech` URL is used as-is without a Baidu call. `PRIVATE`, IMAGE, AUDIO, VIDEO, and legacy messages do not trigger this synthesis path.
 
 This first integration uses Baidu's short-text API: the body must be GBK-encodable and **less than 1024 GBK bytes** (at most 511 ordinary two-byte Chinese characters, fewer when other content consumes space). Oversized or unsupported text is rejected with `422`; it is never truncated. The larger v2 display limit still applies when a sender supplies pre-generated narration. Long news needs a later segmentation/long-text implementation or externally generated audio.
 
@@ -123,7 +123,7 @@ Example (illustrative content only):
 }
 ```
 
-`text`, `text_mode: "TTS"`, and `speech` are required. The body must be nonblank and at most 8192 UTF-16 units and 32 KiB UTF-8. Narration corresponds to `text` only; do not implicitly prepend the title or source. The sender must generate a downloadable narration file before publishing.
+`text` and `text_mode: "TTS"` are required in Producer submissions. In the default Hub-synthesis flow, omit `speech`: the Hub generates/caches narration and adds the real URL. The complete **Hub → terminal** WebSocket message, shown above, requires `speech`; the terminal never receives an incomplete TTS request. The body must be nonblank and at most 8192 UTF-16 units and 32 KiB UTF-8 (Hub short-text synthesis has the smaller GBK limit described above). Narration corresponds to `text` only; title and source are not prepended. A Producer only supplies `speech` when explicitly choosing an existing, downloadable narration MP3.
 
 After a new message is saved, the terminal downloads and plays narration when audio protection allows. It does not also announce a new text message. The card provides read/stop controls. Download or playback failure preserves the text and may fall back to the fixed local text announcement. The terminal neither submits text to Baidu nor stores Baidu credentials.
 
@@ -305,3 +305,17 @@ Private text shows a small lock immediately after the timestamp. Text narration 
 Tap an image or its expand icon to view the already-decoded bitmap full screen, preserving aspect ratio without another download. Tap the video area/play button to open a full-screen player and start only if Bluetooth playback is allowed. While blocked, the viewer opens with an explanation and disabled play button; disconnecting Bluetooth does not start it automatically.
 
 The viewer uses a black background, hides Home chrome and system bars, and provides a top-right close button and Android Back dismissal. Returning preserves the selected message. Video completion leaves a replay action in the viewer. Closing, leaving Home, changing the selected message or Bluetooth becoming unsafe releases/stops the video; a new message sound also closes a playing video viewer before using audio. No automatic media playback is added on message arrival. Existing download bounds, URL validation and message audio-volume rules remain unchanged; video uses ordinary media volume.
+
+### TTS submissions through Broadcast Mid
+
+The Producer web form defaults to Hub synthesis. Send `TEXT` / `text_mode: "TTS"` without `speech` inside the Mid `event`. Mid forwards the submission unchanged; the updated Hub subscriber validates it as producer input and uses the same synthesis path as `POST /api/messages`. Only after synthesis/cache completion does the Hub validate, persist and send the complete terminal message with a real `speech.url`. Existing explicit MP3 URLs skip synthesis. PRIVATE and legacy v1 text never call the provider.
+
+This requires updating the Hub subscriber as well as the Mid web form, and configuring `--baidu-tts-config`, `--media-directory` and `--media-base-url`. The configured LAN URL must serve the generated MP3 to the terminal. Provider/configuration errors leave the message unqueued and expose a body-free `broadcast_mid.last_rejection` reason in authenticated `/_test/status`; Mid HTTP acceptance does not prove synthesis or terminal playback. Retry an unsuccessful submission with its original ID; once accepted, the same ID is deduplicated. Use a new ID to intentionally send identical text again.
+
+### Uploaded images, MP3 audio and MP4 video
+
+Mid is only the relay/upload store, never a TTS provider. The demo has four message kinds and a separate severity selector. Its IMAGE/AUDIO/VIDEO flow uploads a local file, then publishes `media_id` with an outer authenticated `media.delivery`. The terminal never receives `mid://` URLs or Mid credentials.
+
+With `--media-directory` and terminal-accessible `--media-base-url` configured, the Hub downloads only from its configured Mid HTTPS origin, using its Device Token and the delivery ticket. It rejects redirects and NONE bypasses, verifies the complete size/SHA-256, atomically persists the file, rewrites the event to its LAN `/media/` URL and saves the message before sending `media.cached`. Transient downloads retry up to three times with ticket refresh; restarts/reconnects reuse verified files. Mid cleanup does not remove Hub history media. Confirmation responses are transport metadata, not terminal messages.
+
+`--media-cache-bytes` defaults to 536870912 (512 MiB); the cache also bounds managed files to 10000. Only `mid-*` uploaded content counts against this cache (TTS has its separate cache). It never automatically evicts files still potentially referenced by terminal history; a full cache rejects new downloads and reports `media_cache_full`. Safely managing historical-reference-based eviction remains separate work. Incomplete temporary downloads older than ten minutes are cleaned at cache startup. Supported terminal limits are images 8 MiB, MP3 16 MiB and MP4 100 MiB. Errors appear as body/URL-free reasons in authenticated `/_test/status` under `broadcast_mid.last_rejection`.

@@ -130,7 +130,9 @@ def test_documented_message_examples_are_all_valid():
     document = Path(__file__).parents[2] / 'docs/MESSAGE_PROTOCOL.md'
     examples = [json.loads(raw) for raw in re.findall(r'```json\n(.*?)\n```', document.read_text(), re.S)]
     messages = [example for example in examples if example.get('type') == 'home.message']
-    assert len(messages) == 5
+    assert {(item['kind'], item.get('text_mode')) for item in messages} == {
+        ('TEXT', 'PRIVATE'), ('TEXT', 'TTS'), ('IMAGE', None), ('AUDIO', None), ('VIDEO', None)
+    }
     for example in messages:
         validate_message(example)
 

@@ -130,3 +130,19 @@ mDNS 类型 `_pinepi-hub._tcp.local.`，TXT 为 `id`（持久 UUID）、`v=1`、
 ### 严重程度（0.8.4）
 
 消息可携带 `severity: "NORMAL"`（普通）或 `"CRITICAL"`（严重），省略默认普通。严重等级仅用于可信的战争、重大灾害、家人可能遭遇重大危机等情况，不用于日常新闻或普通提醒，由发送方审慎指定，不自动分类。严重卡片随深浅主题使用柔和琥珀色/暖棕色背景、细边框和警告图标及文字。隐私及播放规则不变。使用字段前先升级 Hub 与终端；旧严格 v2 实现会拒绝新字段。JSON 与发布约定见[消息协议](../docs/MESSAGE_PROTOCOL.zh-CN.md)。
+
+### 通过 Broadcast Mid 提交 TTS
+
+发送网页默认选择 Hub 合成，在 Mid 的 `event` 中发送 `TEXT`、`text_mode: "TTS"`，省略 `speech`。Mid 原样转发，更新后的 Hub 订阅器按发送请求校验，复用 `POST /api/messages` 的合成路径。Hub 合成并保存音频后，再校验、持久化和转发带真实 `speech.url` 的完整终端消息。主动提供真实 MP3 URL 时跳过合成；PRIVATE 和旧版 v1 文本不会调用供应商。
+
+需要同时更新 Hub 订阅器和 Mid 网页，并配置 `--baidu-tts-config`、`--media-directory`、`--media-base-url`。配置的局域网地址必须能让终端下载生成的 MP3。供应商或配置错误不会入队，在受控制凭证保护的 `/_test/status` 中通过 `broadcast_mid.last_rejection` 提供不含正文的原因；Mid HTTP 接收成功不代表合成或播放成功。未成功的请求使用原 ID 重试；已接受的相同 ID 会去重。想重复发送同一正文时应使用新的 ID。
+
+订阅器最多保留十个待合成任务，慢合成期间继续处理应用心跳和 PRIVATE 消息。超限记录 `tts_submission_queue_full`，不会向终端转发不完整的 TTS 消息。
+
+### 上传的图片、MP3 音频和 MP4 视频
+
+Mid 只负责消息中转和媒体上传暂存，不做 TTS 合成。网页将四个消息类型与严重程度分开；IMAGE/AUDIO/VIDEO 先上传本地文件，再通过 `media_id` 发布，Hub 接收外层已鉴权的 `media.delivery`。终端不会收到 `mid://` 引用或 Mid 凭证。
+
+配置 `--media-directory` 及终端可访问的 `--media-base-url` 后，Hub 仅从已配置的 Mid HTTPS 源下载，使用自己的 Device Token 和投递票据；拒绝重定向及 NONE 绕过，校验完整大小/SHA-256，原子保存文件，改写为局域网 `/media/` URL 并持久保存消息后，才发送 `media.cached`。临时网络失败最多重试三次并刷新票据，重启/重连会复用已校验文件。Mid 清理不删除 Hub 历史媒体，确认响应也不会作为终端消息转发。
+
+`--media-cache-bytes` 默认 536870912（512 MiB），另限制最多 10000 个托管文件；只统计 `mid-*` 上传缓存，TTS 使用自己的独立缓存。不自动删除终端历史可能仍引用的文件，容量不足拒绝新下载并报告 `media_cache_full`；按历史引用安全回收仍为独立工作。缓存启动时清理超过十分钟的未完成临时文件。终端文件限制为图片 8 MiB、MP3 16 MiB、MP4 100 MiB。错误以不含正文/URL 的原因出现在受控制凭证保护的 `/_test/status` 中的 `broadcast_mid.last_rejection`。

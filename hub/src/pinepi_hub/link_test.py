@@ -27,6 +27,12 @@ class LinkTest:
         self.speech = None
         self.submission_lock = asyncio.Lock()
 
+    async def publish_mid_notification(self, message):
+        if message.get('version') == 2:
+            return await self.publish_submission(message)
+        # Legacy Mid text remains silent v1 and never enters provider synthesis.
+        return await self.publish_notification(message)
+
     async def publish_submission(self, message):
         validate_submission(message)
         needs_speech = message['kind'] == 'TEXT' and message.get('text_mode') == 'TTS' and 'speech' not in message

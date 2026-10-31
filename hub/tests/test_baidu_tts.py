@@ -33,7 +33,7 @@ def mock_fetch(request, limit):
     return 'audio/mp3', b'ID3' + b'0'*256
 
 
-def test_only_http_submission_can_omit_tts_speech():
+def test_only_hub_submission_can_omit_tts_speech():
     item = submission()
     assert validate_submission(item) == item
     with pytest.raises(ProtocolError): validate_message(item)

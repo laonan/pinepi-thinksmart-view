@@ -10,6 +10,8 @@ from urllib.parse import urlsplit
 from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed
 from .notifications import decode_notification, MAX_FRAME_BYTES
+from .baidu_tts import SpeechError
+from .message_protocol import ProtocolError
 
 LOG = logging.getLogger(__name__)
 
@@ -29,8 +31,9 @@ def read_config(path):
 
 
 class BroadcastMid:
-    def __init__(self, config, deliver):
+    def __init__(self, config, deliver, media_cache=None):
         self.config, self.deliver = config, deliver
+        self.media_cache = media_cache
         self.task = None
         self.state = 'starting'
         self.received = self.ignored = 0
@@ -53,15 +56,82 @@ class BroadcastMid:
             await ws.send(json.dumps({'type': 'pong'}))
             self.state = 'connected'
             return
-        message, reason = decode_notification(packet)
+        if isinstance(packet, dict) and packet.get('type') == 'media.cached.result':
+            if packet.get('status') != 'cached':
+                self.last_rejection = 'media_confirmation_rejected'
+                self.ignored += 1
+            self.state = 'connected'
+            return
+        if isinstance(packet, dict) and packet.get('type') == 'media.delivery':
+            from .mid_media import MediaError
+            try:
+                if self.media_cache is None:
+                    raise MediaError('media_cache_not_configured')
+                confirmation = await self.media_cache.accept(packet)
+                await ws.send(json.dumps(confirmation))
+            except (MediaError, ProtocolError) as error:
+                self.ignored += 1
+                self.last_rejection = str(error)
+                LOG.warning('Broadcast Mid media rejected; reason=%s', self.last_rejection)
+                return
+            self.received += 1
+            self.state = 'connected'
+            return
+        message, reason = decode_notification(packet, allow_hub_tts=True)
         if message is None:
             self.ignored += 1
             self.last_rejection = reason
             LOG.warning('Broadcast Mid notification rejected; reason=%s', reason)
             return
-        await self.deliver(message)
+        try:
+            await self.deliver(message)
+        except (SpeechError, ProtocolError) as error:
+            # Both errors expose bounded reason codes, never provider responses,
+            # credentials or message text. Failed synthesis is not enqueued.
+            self.ignored += 1
+            self.last_rejection = str(error)
+            LOG.warning('Broadcast Mid submission rejected; reason=%s', self.last_rejection)
+            return
         self.received += 1
         self.state = 'connected'
+
+    async def receive(self, ws):
+        # Synthesis can take longer than Mid's application heartbeat timeout.
+        # Bound background submissions while handling pings/private events promptly.
+        pending = set()
+        def completed(task):
+            pending.discard(task)
+            if not task.cancelled() and task.exception() is not None:
+                self.ignored += 1
+                self.last_rejection = 'submission_failed'
+                LOG.warning('Broadcast Mid submission failed; error_type=%s', type(task.exception()).__name__)
+        try:
+            async for raw in ws:
+                try:
+                    packet = json.loads(raw) if isinstance(raw, str) else None
+                    event = packet.get('event', packet) if isinstance(packet, dict) else None
+                    is_media = isinstance(packet, dict) and packet.get('type') == 'media.delivery'
+                    needs_speech = (isinstance(event, dict) and event.get('kind') == 'TEXT'
+                                    and event.get('text_mode') == 'TTS' and 'speech' not in event)
+                except ValueError:
+                    needs_speech = False
+                    is_media = False
+                if needs_speech or is_media:
+                    if len(pending) >= 10:
+                        self.ignored += 1
+                        self.last_rejection = 'media_submission_queue_full' if is_media else 'tts_submission_queue_full'
+                        LOG.warning('Broadcast Mid submission rejected; reason=%s', self.last_rejection)
+                        continue
+                    task = asyncio.create_task(self.handle(ws, raw))
+                    pending.add(task)
+                    task.add_done_callback(completed)
+                else:
+                    await self.handle(ws, raw)
+        finally:
+            tasks = tuple(pending)
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     async def run(self):
         delay = 1
@@ -80,17 +150,20 @@ class BroadcastMid:
                     await ws.send(json.dumps({'token': token, 'device': device}))
                     # Mid has no auth-success frame. A heartbeat/event proves progress.
                     self.state = 'auth_sent'
-                    async for raw in ws:
-                        await self.handle(ws, raw)
-                        if self.state == 'connected':
-                            delay = 1
+                    await self.receive(ws)
+                    if self.state == 'connected':
+                        delay = 1
             except asyncio.CancelledError:
                 raise
             except ConnectionClosed as error:
+                if self.state == 'connected':
+                    delay = 1
                 code = error.rcvd.code if error.rcvd else None
                 self.state = 'auth_rejected' if code in (4001, 4002) else 'reconnecting'
                 LOG.warning('Broadcast Mid disconnected; state=%s', self.state)
             except Exception as error:
+                if self.state == 'connected':
+                    delay = 1
                 self.state = 'reconnecting'
                 LOG.warning('Broadcast Mid retry; error_type=%s', type(error).__name__)
             await asyncio.sleep(delay)
