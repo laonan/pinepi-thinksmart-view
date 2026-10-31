@@ -27,6 +27,7 @@ dist/
 **/link-test.json
 **/android-hub-test.json
 **/broadcast-mid.json
+**/baidu-tts.json
 **/runtime.env
 
 # On-device validation data can contain private messages and screenshots.

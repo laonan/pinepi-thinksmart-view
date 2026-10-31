@@ -24,9 +24,12 @@ def main() -> None:
     parser.add_argument("--discovery-interface", help="optional interface name, e.g. wlan0")
     parser.add_argument("--broadcast-mid-config", type=Path)
     parser.add_argument("--notification-state", type=Path)
+    parser.add_argument('--media-directory', type=Path, help='optional dedicated directory served at /media')
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error("port must be between 1 and 65535")
+    if args.media_directory is not None and not args.media_directory.is_dir():
+        parser.error('media directory does not exist')
     if bool(args.tls_cert) != bool(args.tls_key):
         parser.error("TLS certificate and key must be supplied together")
     if args.tls_cert and (not args.tls_cert.is_file() or not args.tls_key.is_file()):
@@ -53,17 +56,20 @@ def main() -> None:
         except (ValueError, KeyError):
             parser.error("discovery requires a persistent UUID hub_id in private configuration")
     upstream = None
+    if link is not None:
+        try:
+            state_path = args.notification_state or args.link_test_config.with_name('notifications.json')
+            link.notifications = NotificationStore(state_path)
+        except (OSError, ValueError, TypeError):
+            parser.error('invalid notification state; refusing to discard it')
     if args.broadcast_mid_config:
         if link is None or args.notification_state is None:
             parser.error("Broadcast Mid requires a terminal link and notification state path")
-        try:
-            link.notifications = NotificationStore(args.notification_state)
-        except (OSError, ValueError, TypeError):
-            parser.error("invalid notification state; refusing to discard it")
         upstream = BroadcastMid(args.broadcast_mid_config, link.publish_notification)
         link.upstream_status = upstream.status
     uvicorn.run(
-        create_app(diagnostics=args.diagnostics, link_test=link, discovery=discovery, broadcast_mid=upstream),
+        create_app(diagnostics=args.diagnostics, link_test=link, discovery=discovery, broadcast_mid=upstream,
+                   media_directory=args.media_directory),
         host=args.host,
         port=args.port,
         ws="websockets",

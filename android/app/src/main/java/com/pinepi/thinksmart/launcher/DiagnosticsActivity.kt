@@ -127,6 +127,7 @@ class DiagnosticsActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        (application as LauncherApplication).messageAudio.suspended = true
         // Restore before service/sensor work, rather than waiting for window focus after wake.
         applyHomeImmersiveMode()
         HubTestState.onChanged = { renderHub() }
@@ -168,6 +169,7 @@ class DiagnosticsActivity : Activity() {
         // Never continue capturing or playing after leaving the foreground probe.
         pendingRecording = false
         audio.cancel()
+        (application as LauncherApplication).messageAudio.suspended = false
         bluetooth.onChanged = null
         ProximityWakeService.onChanged = null
         HubTestState.onChanged = null

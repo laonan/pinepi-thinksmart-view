@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
         bluetooth = app.bluetooth
         navigation = SystemNavigation(this)
         images = HomeMediaResources()
+        app.messageAudio.beforePlay = { images.stopVideo() }
         messages = store.messages
         newestId = messages.firstOrNull()?.id
         selectedId = savedInstanceState?.getString("selected_id") ?: newestId
@@ -77,7 +78,7 @@ class MainActivity : ComponentActivity() {
                     arrivalId = arrivalId,
                     onArrivalShown = { id -> if (arrivalId == id) arrivalId = null },
                     onPage = ::openPage,
-                    onSelect = { selectedId = it },
+                    onSelect = { if (selectedId != it) app.messageAudio.stop(); selectedId = it },
                     onTheme = { selected ->
                         mode = selected
                         preferences.edit { putString("theme_mode", selected.name) }
@@ -88,6 +89,7 @@ class MainActivity : ComponentActivity() {
                     onOtherLauncher = { navigation.openOtherLauncher() },
                     onConfirmHub = { HubTestService.confirm(this, it) },
                     onClear = {
+                        app.messageAudio.stop()
                         storageNotice = if (store.clear()) R.string.main_messages_cleared else R.string.main_storage_failed
                     },
                     onVersion = ::tapVersion,
@@ -140,6 +142,7 @@ class MainActivity : ComponentActivity() {
         // Compose media effects release their resources when active becomes false.
         active = false
         images.pause()
+        (application as LauncherApplication).messageAudio.stop()
         store.onChanged = null
         HubTestState.onChanged = null
         bluetooth.onChanged = null
@@ -147,7 +150,10 @@ class MainActivity : ComponentActivity() {
         if (receiverRegistered) { unregisterReceiver(timeChanges); receiverRegistered = false }
         super.onPause()
     }
-    override fun onDestroy() { images.close(); super.onDestroy() }
+    override fun onDestroy() {
+        (application as LauncherApplication).messageAudio.beforePlay = null
+        images.close(); super.onDestroy()
+    }
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("page", page.name)
         outState.putString("selected_id", selectedId)
@@ -155,7 +161,10 @@ class MainActivity : ComponentActivity() {
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); openPage(HomePage.MESSAGES) }
     override fun onWindowFocusChanged(hasFocus: Boolean) { super.onWindowFocusChanged(hasFocus); if (hasFocus) immersive(dark) }
-    private fun openPage(value: HomePage) { page = value; versionClicks = 0 }
+    private fun openPage(value: HomePage) {
+        if (value != page) (application as LauncherApplication).messageAudio.stop()
+        page = value; versionClicks = 0
+    }
     private fun refreshHub() { hubStatus = HubTestState.status; hubs = HubTestState.availableHubs }
     private fun refreshWake() { proximityEnabled = ProximityWakeService.isEnabled(this) }
     private fun updateTheme() { dark = mode.isDark(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)); immersive(dark) }

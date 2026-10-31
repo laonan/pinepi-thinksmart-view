@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -106,12 +107,22 @@ private fun HomeHeader(page: HomePage, hubStatus: Int, bluetooth: BluetoothMonit
         StatusLabel(stringResource(if (hubStatus == R.string.hub_test_connected) R.string.main_hub_connected else R.string.main_hub_unavailable), hubStatus == R.string.hub_test_connected)
         Spacer(Modifier.width(16.dp))
         val btLabel = when (bluetooth) {
-            BluetoothMonitor.State.CONNECTED, BluetoothMonitor.State.CONNECTING -> R.string.main_bluetooth_connected
+            BluetoothMonitor.State.CONNECTED -> R.string.main_bluetooth_connected
+            BluetoothMonitor.State.CONNECTING -> R.string.main_bluetooth_connecting
             BluetoothMonitor.State.DISCONNECTED -> R.string.main_bluetooth_disconnected
             BluetoothMonitor.State.OFF -> R.string.main_bluetooth_off
-            else -> R.string.main_bluetooth_unknown
+            BluetoothMonitor.State.UNAVAILABLE -> R.string.main_bluetooth_unavailable
+            BluetoothMonitor.State.UNKNOWN -> R.string.main_bluetooth_unknown
         }
-        Text(stringResource(btLabel), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+        val btIcon = when (bluetooth) {
+            BluetoothMonitor.State.CONNECTED -> R.drawable.ic_bluetooth_connected
+            BluetoothMonitor.State.CONNECTING -> R.drawable.ic_bluetooth_searching
+            BluetoothMonitor.State.OFF, BluetoothMonitor.State.UNAVAILABLE -> R.drawable.ic_bluetooth_disabled
+            else -> R.drawable.ic_bluetooth
+        }
+        Icon(painterResource(btIcon), stringResource(btLabel),
+            Modifier.size(18.dp).testTag("home_bluetooth"),
+            tint = if (bluetooth == BluetoothMonitor.State.CONNECTED) colors.primary else colors.onSurfaceVariant)
         Spacer(Modifier.width(16.dp))
         FilledTonalIconButton(onClick = { onPage(if (page == HomePage.MESSAGES) HomePage.SETTINGS else HomePage.MESSAGES) },
             modifier = Modifier.testTag("open_settings")) {
@@ -205,18 +216,47 @@ private fun MessageCard(message: HomeMessage, active: Boolean, bluetooth: Blueto
                     Text(message.source, Modifier.padding(horizontal = 10.dp, vertical = 4.dp).testTag("message_source"),
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 }
-                Text(SimpleDateFormat("M月d日 HH:mm", Locale.SIMPLIFIED_CHINESE).format(Date(message.receivedAt)),
+                Text(SimpleDateFormat("M月d日 HH:mm", Locale.SIMPLIFIED_CHINESE).format(Date(
+                    if (message.version == 2) java.time.OffsetDateTime.parse(message.createdAt).toInstant().toEpochMilli() else message.receivedAt)),
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(20.dp))
+            if (message.kind != HomeMessage.Kind.TEXT && message.title.isNotBlank()) {
+                Text(message.title, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(12.dp))
+            }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (message.kind) {
-                    HomeMessage.Kind.TEXT -> TextMessage(message)
+                    HomeMessage.Kind.TEXT -> Column {
+                        if (message.textMode == HomeMessage.TextMode.TTS) AudioControls(message, bluetooth.allowsAudio, active)
+                        TextMessage(message)
+                    }
                     HomeMessage.Kind.IMAGE -> ImageMessage(message, active, media)
                     HomeMessage.Kind.VIDEO -> VideoMessage(message, active, bluetooth.allowsAudio, media)
+                    HomeMessage.Kind.AUDIO -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        AudioControls(message, bluetooth.allowsAudio, active)
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AudioControls(message: HomeMessage, allowsPlayback: Boolean, active: Boolean) {
+    val context = LocalContext.current
+    val audio = (context.applicationContext as LauncherApplication).messageAudio
+    val playing = audio.currentId == message.id
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        FilledTonalButton(onClick = { if (playing) audio.stop() else audio.play(message) },
+            enabled = active && (playing || allowsPlayback), modifier = Modifier.testTag("message_audio_play")) {
+            Icon(if (playing) Icons.Default.Close else Icons.Default.PlayArrow, null, Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(if (playing) R.string.main_stop_audio else if (message.kind == HomeMessage.Kind.TEXT) R.string.main_read_text else R.string.main_play_audio))
+        }
+        if (playing && audio.loading) Text(stringResource(R.string.main_audio_loading), style = MaterialTheme.typography.bodySmall)
+        else if (!allowsPlayback) Text(stringResource(R.string.main_audio_blocked), style = MaterialTheme.typography.bodySmall)
+        else audio.lastError?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
     }
 }
 
@@ -422,6 +462,8 @@ private fun MediaNotice(text: Int) {
 
 @Composable
 private fun VideoMessage(message: HomeMessage, active: Boolean, allowsPlayback: Boolean, resources: HomeMediaResources) {
+    val context = LocalContext.current
+    val messageAudio = (context.applicationContext as LauncherApplication).messageAudio
     var requested by remember(message.id) { mutableStateOf(false) }
     var loading by remember(message.id) { mutableStateOf(false) }
     var error by remember(message.id) { mutableStateOf<Int?>(null) }
@@ -459,7 +501,7 @@ private fun VideoMessage(message: HomeMessage, active: Boolean, allowsPlayback: 
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 FilledTonalIconButton(onClick = {
                     if (!allowsPlayback) error = R.string.main_video_blocked
-                    else { error = null; loading = true; requested = true }
+                    else { messageAudio.stop(); error = null; loading = true; requested = true }
                 }, modifier = Modifier.size(64.dp).testTag("message_video_play")) {
                     Icon(Icons.Default.PlayArrow, stringResource(R.string.main_play_video), Modifier.size(32.dp))
                 }

@@ -1,9 +1,10 @@
-"""Bounded Mid text compatibility adapter; media and Agent messages are separate."""
+"""Bounded v2 notification adapter and legacy Mid text compatibility."""
 import hashlib
 import json
 import os
 from pathlib import Path
 from uuid import uuid4
+from .message_protocol import ProtocolError, validate_message
 
 
 MAX_TEXT_UNITS = 8192  # UTF-16 code units, matching Kotlin String.length.
@@ -18,6 +19,12 @@ def decode_notification(packet):
     event = packet.get('event', packet)
     if not isinstance(event, dict):
         return None, 'invalid_event'
+    # Explicit protocol fields must never fall through to the legacy text adapter.
+    if any(key in event for key in ('version', 'kind', 'text_mode', 'speech', 'media')) or event.get('type') == 'home.message':
+        try:
+            return validate_message(event), None
+        except ProtocolError as error:
+            return None, str(error)
     title, text = event.get('title', ''), event.get('content')
     if not isinstance(title, str) or not isinstance(text, str) or not text.strip():
         return None, 'unsupported_or_empty_text'
@@ -64,9 +71,13 @@ class NotificationStore:
                 if (not isinstance(row, dict) or row.get('type') != 'home.message'
                         or not isinstance(row.get('id'), str)):
                     raise ValueError('invalid notification record')
+                if row.get('version') == 2:
+                    validate_message(row)
             self.messages = rows
 
     def add(self, message):
+        if message.get('version') == 2:
+            validate_message(message)
         if any(row['id'] == message['id'] for row in self.messages):
             return False
         rows = [*self.messages, message][-10:]

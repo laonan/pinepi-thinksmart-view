@@ -22,7 +22,7 @@ import okio.ByteString
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/** Discovered LAN gateway test connection. Keeps no audio or business history. */
+/** Discovered LAN message transport. Persists records before ACK; media travels by URL. */
 class HubTestService : Service() {
     private val main = Handler(Looper.getMainLooper())
     private val ids = RecentMessageIds()
@@ -139,7 +139,7 @@ class HubTestService : Service() {
                 main.post { if (current(token, webSocket)) receive(webSocket, text) }
             }
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                // The test protocol accepts text JSON only. No binary playback or execution.
+                // The message protocol accepts text JSON only. Media is fetched from validated URLs.
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 webSocket.close(code, null)
@@ -176,31 +176,42 @@ class HubTestService : Service() {
         try {
             val json = JSONObject(text)
             val notification = json.opt("type") == "home.message"
-            if ((!notification && json.opt("type") != "test.message") || json.opt("version") != 1) return
-            if (notification && json.opt("kind") != "TEXT") return
-            val id = json.opt("id") as? String ?: return
-            val content = json.opt("text") as? String ?: return
-            if (content.isBlank() || content.toByteArray(Charsets.UTF_8).size > (if (notification) 32 * 1024 else 2048)) return
-            val title = if (notification) json.opt("title") as? String ?: return else ""
-            val source = if (notification) json.opt("source") as? String ?: return else getString(R.string.hub_message_source)
-            val message = HomeMessage(id, HomeMessage.Kind.TEXT, source, System.currentTimeMillis(), title = title, text = content)
+            if (!notification && json.opt("type") != "test.message") return
+            val message = if (notification && json.opt("version") == 2) {
+                HomeMessageProtocol.decode(json) ?: return
+            } else {
+                if (json.opt("version") != 1 || (notification && json.opt("kind") != "TEXT")) return
+                val id = json.opt("id") as? String ?: return
+                val content = json.opt("text") as? String ?: return
+                if (content.isBlank() || content.toByteArray(Charsets.UTF_8).size > (if (notification) 32 * 1024 else 2048)) return
+                val title = if (notification) json.opt("title") as? String ?: return else ""
+                val source = if (notification) json.opt("source") as? String ?: return else getString(R.string.hub_message_source)
+                HomeMessage(id, HomeMessage.Kind.TEXT, source, System.currentTimeMillis(), title = title, text = content)
+            }
             if (!message.isValid()) return
+            val id = message.id
             val store = (application as LauncherApplication).messages
-            if (notification && store.messages.any { it.id == id }) {
+            fun acknowledge(wake: Boolean) {
+                val ack = JSONObject().put("type", if (notification) "home.ack" else "test.ack").put("id", id)
+                    .put("wake_requested", wake)
+                if (message.version == 2) ack.put("version", 2)
+                ws.send(ack.toString())
+            }
+            if (notification && store.contains(id)) {
                 if (store.saved || store.flush()) {
-                    ws.send(JSONObject().put("type", "home.ack").put("id", id).put("wake_requested", false).toString())
+                    acknowledge(false)
                 }
                 return
             }
-            if (!ids.accept(id)) return
+            if (!notification && !ids.accept(id)) return
             if (!store.add(message)) return
-            HubTestState.received(content)
+            HubTestState.received(if (message.kind == HomeMessage.Kind.TEXT) message.text else message.title.ifBlank { message.kind.name })
             val result = DisplayWake.request(this, "HubMessage")
             // Notification ACK means the local record was saved, not merely received in RAM.
             if (!notification || store.saved) {
-                ws.send(JSONObject().put("type", if (notification) "home.ack" else "test.ack").put("id", id)
-                    .put("wake_requested", result == DisplayWake.Result.REQUESTED).toString())
+                acknowledge(result == DisplayWake.Result.REQUESTED)
             }
+            if (store.saved) (application as LauncherApplication).messageAudio.incoming(message)
             Log.i(TAG, "Hub message accepted; wake=$result; count=${HubTestState.acceptedCount}")
         } catch (_: RuntimeException) {
             // Unrecognized frames never trigger sound, recording or a wake request.

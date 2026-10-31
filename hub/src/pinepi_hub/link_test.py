@@ -1,4 +1,4 @@
-"""Terminal socket transport with retained fixed-message tests and Mid text compatibility."""
+"""Terminal message transport, durable v2 publishing and retained legacy probes."""
 import asyncio
 import json
 from collections import deque
@@ -6,7 +6,8 @@ from contextlib import suppress
 import secrets
 from uuid import uuid4
 
-from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
+from .message_protocol import MAX_FRAME_BYTES, ProtocolError, validate_message
 
 
 class LinkTest:
@@ -24,9 +25,13 @@ class LinkTest:
         self.upstream_status = None
 
     async def publish_notification(self, message):
+        if message.get('version') == 2:
+            validate_message(message)
         async with self.notification_lock:
+            if self.notifications is None:
+                raise RuntimeError('notification store is not configured')
             if not self.notifications.add(message):
-                return
+                return False
             self.sent_ids.append(message['id'])
             for ws in tuple(self.clients):
                 try:
@@ -35,6 +40,7 @@ class LinkTest:
                     self.clients.discard(ws)
                     with suppress(Exception):
                         await ws.close()
+            return True
 
     def authorize_control(self, authorization: str | None) -> None:
         if not secrets.compare_digest((authorization or "").encode(), ("Bearer " + self.control_token).encode()):
@@ -69,8 +75,9 @@ class LinkTest:
                         return
                     if (isinstance(ack, dict) and ack.get("type") in ("test.ack", "home.ack")
                             and isinstance(ack.get("id"), str) and ack["id"] in self.sent_ids
-                            and isinstance(ack.get("wake_requested"), bool)):
-                        self.last_ack = {"id": ack["id"], "wake_requested": ack["wake_requested"]}
+                            and ((ack.get('type') == 'home.ack' and type(ack.get('version')) is int and ack['version'] == 2)
+                                 or isinstance(ack.get("wake_requested"), bool))):
+                        self.last_ack = {"id": ack["id"], "wake_requested": ack.get("wake_requested", False)}
                         if ack['type'] == 'home.ack' and self.notifications is not None:
                             self.notifications.acknowledge(ack['id'])
             except (WebSocketDisconnect, RuntimeError, TimeoutError):
@@ -92,6 +99,25 @@ class LinkTest:
                 except (TimeoutError, RuntimeError, WebSocketDisconnect):
                     self.clients.discard(ws)
             return {"id": message["id"], "sent": delivered}
+
+        @app.post('/api/messages')
+        async def publish(request: Request, authorization: str | None = Header(default=None)):
+            self.authorize_control(authorization)
+            if self.notifications is None:
+                raise HTTPException(503, detail='notification_store_not_configured')
+            body = bytearray()
+            async for chunk in request.stream():
+                body.extend(chunk)
+                if len(body) > MAX_FRAME_BYTES:
+                    raise HTTPException(413, detail='frame_too_large')
+            try:
+                message = validate_message(json.loads(body))
+            except ProtocolError as error:
+                raise HTTPException(422, detail=str(error)) from None
+            except (ValueError, UnicodeError):
+                raise HTTPException(422, detail='invalid_json') from None
+            added = await self.publish_notification(message)
+            return {'id': message['id'], 'status': 'queued' if added else 'duplicate'}
 
         @app.get("/_test/status")
         async def status(authorization: str | None = Header(default=None)):

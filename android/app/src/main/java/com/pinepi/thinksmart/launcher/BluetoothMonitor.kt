@@ -25,6 +25,7 @@ class BluetoothMonitor(private val context: Context) {
     var state = State.UNKNOWN
         private set
     var onChanged: (() -> Unit)? = null
+    var onAudioGateChanged: (() -> Unit)? = null
     private var registered = false
     private val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter
 
@@ -49,6 +50,7 @@ class BluetoothMonitor(private val context: Context) {
             }
             state = next
             refreshPowerState()
+            onAudioGateChanged?.invoke()
             onChanged?.invoke()
         }
     }

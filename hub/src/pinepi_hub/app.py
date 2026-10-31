@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager, AsyncExitStack
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
 from .link_test import LinkTest
 
 MAX_FRAME_BYTES = 4096
 
 
-def create_app(*, diagnostics: bool = False, link_test: LinkTest | None = None, discovery=None, broadcast_mid=None) -> FastAPI:
+def create_app(*, diagnostics: bool = False, link_test: LinkTest | None = None, discovery=None, broadcast_mid=None, media_directory=None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app):
         async with AsyncExitStack() as stack:
@@ -17,6 +18,9 @@ def create_app(*, diagnostics: bool = False, link_test: LinkTest | None = None, 
             yield
 
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+    if media_directory is not None:
+        # Explicit public-to-trusted-LAN media directory only, never the config/state root.
+        app.mount('/media', StaticFiles(directory=media_directory, follow_symlink=False), name='media')
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:

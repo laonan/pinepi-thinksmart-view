@@ -1,6 +1,8 @@
 # PinePi Hub 基础服务
 
-当前已完成基础服务、局域网消息链路和用户批准的 Broadcast Mid 文本订阅/转发；终端主 UI 已实现。完整媒体协议、STT、Agent、TTS 尚未实施。业务逻辑和 UI 规划须经用户确认；基础测试与构建可自主进行。
+当前已完成基础服务、局域网消息链路、Broadcast Mid 订阅/转发和 v2 消息校验及持久转发。完整 JSON 和五种消息示例见 **[消息协议与使用说明](../docs/MESSAGE_PROTOCOL.md)**。提供受控制 token 保护的 `POST /api/messages`；终端支持文本、图片、音频、视频。百度凭证和固定提示音仍待配置，STT、Agent、Hub 正文 TTS 合成与定时新闻尚未实施。
+
+`--link-test-config` 模式会启用持久消息队列；可用 `--notification-state` 指定路径，缺省使用该配置文件同目录的 `notifications.json`。可选 `--media-directory` 显式托管专用媒体目录到 `/media`。配置和使用方法见上述协议文档；下文旧版本测试记录保留其当时的范围。
 
 当前部署（2026-10-30 迁移）：`alan@192.168.31.36`，主机 `blue62a`，Raspberry Pi 4B / Debian 12 / aarch64。使用隔离的 Python 3.13.18（uv 管理），系统 Python 3.11 不变；代码在 `/home/alan/pinepi-thinksmart-view/hub`，仍由 systemd 常驻，发现网卡为 `eth0`。该网口当前有 `.36` 和 `.37` 两个地址，广播同一新 Hub 身份；用户已在终端确认，固定消息及同 ID 回执已通过。详情见 [迁移记录](../docs/HUB_MIGRATION.md)。
 

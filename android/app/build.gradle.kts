@@ -13,8 +13,8 @@ android {
         // Dedicated Android 8.1.0 appliance, distributed by local installation.
         minSdk = 27
         targetSdk = 27
-        versionCode = 20
-        versionName = "0.7.8"
+        versionCode = 22
+        versionName = "0.8.0"
     }
 
     buildFeatures { compose = true }

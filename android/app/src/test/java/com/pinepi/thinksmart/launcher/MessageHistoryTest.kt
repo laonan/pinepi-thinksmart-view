@@ -40,4 +40,27 @@ class MessageHistoryTest {
             assertFalse(url, HomeMediaUrl.allowed(url))
         }
     }
+    @Test fun v2PrivacyAndTtsModesAreExplicitAndMutuallyExclusive() {
+        val private = message("private").copy(version = 2, createdAt = "2026-10-31T07:30:00+08:00",
+            textMode = HomeMessage.TextMode.PRIVATE)
+        assertTrue(private.isValid())
+        assertFalse(private.copy(speechUrl = "https://example.com/secret.mp3").isValid())
+        assertFalse(private.copy(textMode = HomeMessage.TextMode.LEGACY).isValid())
+        assertFalse(private.copy(textMode = HomeMessage.TextMode.TTS).isValid())
+        assertTrue(private.copy(textMode = HomeMessage.TextMode.TTS, speechUrl = "https://example.com/read.mp3").isValid())
+        assertFalse(private.copy(createdAt = "2026-02-30T07:30:00Z").isValid())
+        assertFalse(private.copy(createdAt = "2026-10-31T07:30:00").isValid())
+        assertFalse(private.copy(source = "").isValid())
+        assertFalse(private.copy(version = 1).isValid())
+    }
+    @Test fun v2MediaCarriesTitlesAndRequiresMatchingMimeWithoutTextOrSpeech() {
+        for ((kind, mime) in listOf(HomeMessage.Kind.IMAGE to "image/png", HomeMessage.Kind.VIDEO to "video/mp4", HomeMessage.Kind.AUDIO to "audio/mpeg")) {
+            val media = HomeMessage("media", kind, "Hub", 1, title = "标题", mediaUrl = "https://example.com/file",
+                version = 2, createdAt = "2026-10-31T07:30:00Z", mediaMime = mime)
+            assertTrue(media.isValid())
+            assertFalse(media.copy(mediaMime = "application/octet-stream").isValid())
+            assertFalse(media.copy(text = "mixed content").isValid())
+            assertFalse(media.copy(speechUrl = "https://example.com/read.mp3").isValid())
+        }
+    }
 }
