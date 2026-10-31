@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -48,6 +49,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -214,14 +216,23 @@ private fun MessageCard(message: HomeMessage, active: Boolean, bluetooth: Blueto
         Column(Modifier.padding(start = 28.dp, top = 28.dp, end = 28.dp,
             bottom = if (message.kind == HomeMessage.Kind.TEXT) 0.dp else 28.dp)
             .graphicsLayer { alpha = contentOpacity() }) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+            Row(modifier = Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(modifier = Modifier.widthIn(max = 280.dp), shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
                     Text(message.source, Modifier.padding(horizontal = 10.dp, vertical = 4.dp).testTag("message_source"),
-                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Text(SimpleDateFormat("M月d日 HH:mm", Locale.SIMPLIFIED_CHINESE).format(Date(
                     if (message.version == 2) java.time.OffsetDateTime.parse(message.createdAt).toInstant().toEpochMilli() else message.receivedAt)),
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (message.textMode == HomeMessage.TextMode.PRIVATE) {
+                    Icon(Icons.Default.Lock, stringResource(R.string.main_private_message),
+                        Modifier.size(18.dp).testTag("message_private"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (message.kind == HomeMessage.Kind.TEXT && message.textMode == HomeMessage.TextMode.TTS) {
+                    AudioControls(message, bluetooth.allowsAudio, active, compact = true)
+                }
             }
             Spacer(Modifier.height(20.dp))
             if (message.kind != HomeMessage.Kind.TEXT && message.title.isNotBlank()) {
@@ -230,10 +241,7 @@ private fun MessageCard(message: HomeMessage, active: Boolean, bluetooth: Blueto
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (message.kind) {
-                    HomeMessage.Kind.TEXT -> Column {
-                        if (message.textMode == HomeMessage.TextMode.TTS) AudioControls(message, bluetooth.allowsAudio, active)
-                        TextMessage(message)
-                    }
+                    HomeMessage.Kind.TEXT -> TextMessage(message)
                     HomeMessage.Kind.IMAGE -> ImageMessage(message, active, media)
                     HomeMessage.Kind.VIDEO -> VideoMessage(message, active, bluetooth.allowsAudio, media)
                     HomeMessage.Kind.AUDIO -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -246,10 +254,30 @@ private fun MessageCard(message: HomeMessage, active: Boolean, bluetooth: Blueto
 }
 
 @Composable
-private fun AudioControls(message: HomeMessage, allowsPlayback: Boolean, active: Boolean) {
+private fun AudioControls(message: HomeMessage, allowsPlayback: Boolean, active: Boolean, compact: Boolean = false) {
     val context = LocalContext.current
     val audio = (context.applicationContext as LauncherApplication).messageAudio
     val playing = audio.currentId == message.id
+    if (compact) {
+        val label = stringResource(if (playing) R.string.main_stop_audio else R.string.main_read_text)
+        val description = if (!allowsPlayback && !playing) label + "，" + stringResource(R.string.main_audio_blocked)
+            else if (playing && audio.loading) stringResource(R.string.main_audio_loading) + "，" + label else label
+        IconButton(onClick = { if (playing) audio.stop() else audio.play(message) },
+            enabled = active && (playing || allowsPlayback), modifier = Modifier.testTag("message_audio_play")) {
+            if (playing && audio.loading) {
+                Box(contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    Icon(Icons.Default.Close, description, Modifier.size(12.dp))
+                }
+            } else if (playing) Icon(painterResource(R.drawable.ic_stop), description, Modifier.size(20.dp))
+            else Icon(Icons.Default.PlayArrow, description, Modifier.size(20.dp))
+        }
+        val error = audio.lastError
+        LaunchedEffect(error, active) {
+            if (active && error != null) Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+        }
+        return
+    }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         FilledTonalButton(onClick = { if (playing) audio.stop() else audio.play(message) },
             enabled = active && (playing || allowsPlayback), modifier = Modifier.testTag("message_audio_play")) {

@@ -4,7 +4,7 @@
 
 A custom Android Home launcher for the Lenovo ThinkSmart View, built and validated against **Android 8.1.0 / API 27**. It preserves the existing ROM, Bluetooth speaker functionality, and original launcher. See [Project context](PROJECT_CONTEXT.md) for decisions and scope.
 
-## Current status: Material 3 UI, message protocol v2, and Baidu TTS (0.8.2)
+## Current status: Material 3 UI, message protocol v2, and Baidu TTS (0.8.3)
 
 See **[Message protocol and usage](docs/MESSAGE_PROTOCOL.md)** for publishing, complete JSON fields, all five examples, acknowledgements, media limits, and notification audio generation. Version 2 supports spoken text, private text with a local announcement, and image/audio/video URLs. Legacy v1 text remains silent.
 
@@ -22,6 +22,12 @@ Baidu TTS is connected in 0.8.1: four fixed announcements are bundled, and the H
 Settings → **语音播放音量** (voice playback volume) saves a minimum media-volume step, displayed as **1/15 … 15/15** on ThinkSmart, default **14/15**. Just before a local arrival announcement, text narration, or manually selected audio message starts, the terminal raises media volume only if it is below this minimum. It does not lower a louder setting. Downloads, blocked Bluetooth playback, and diagnostics do not raise volume; the video player itself retains normal media-volume behavior.
 
 On completion, cancellation, error, interruption, or leaving Home, the previous volume is restored before audio focus is released. A volume-key press or observed external volume change during playback keeps the user's adjustment instead. This restoration covers normal playback/lifecycle cleanup, not abrupt process termination or power loss. The selector uses the device's actual media-volume steps directly, with no percentage conversion. Bluetooth music remains protected by the existing disconnect requirement; there is no automatic disconnection or queued replay.
+
+
+
+### Message header icons (0.8.3)
+
+Private text shows a small lock immediately after the timestamp. Text narration uses a compact play icon in the same header, replacing the text button above the body. It changes to stop during playback and to a cancelable progress indicator during loading. Accessibility labels retain the action and Bluetooth-blocked reason; playback errors appear as a brief toast. Privacy and playback policies are unchanged.
 
 
 ## Documentation

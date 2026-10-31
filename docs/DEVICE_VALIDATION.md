@@ -382,3 +382,10 @@ Settings now selects actual media steps 1/15–15/15, default 14/15, persisted l
 Android build, 38 JVM tests (including seven volume-policy cases), and Lint passed, with zero errors and six existing warnings. On-device Settings displayed the new default; changing 13/15 then 14/15 persisted both values. Final-step-build Hub narration verified 3→14→3; a volume-down key during narration verified 3→14→13, remaining 13 after completion. The earlier percentage prototype was replaced at the user's request. One SSH publication attempt disconnected before submission; retry succeeded.
 
 All four synthetic volume-test records were removed. The original ten IDs were verified restored, with durable deduplication retained. System media volume returned to its pre-test 14/15; the saved message floor remained 14/15. No Bluetooth switch or phone connection was changed automatically. Abrupt process death/power loss restoration and primary video volume behavior are outside this feature's acceptance.
+
+
+## 0.8.3 Message header icons (2026-10-31)
+
+Built and installed code 25; Lint has zero errors and six existing warnings. Two local synthetic display records verified the PRIVATE lock immediately after time, and the TTS icon button in the metadata row with no visible narration text button in the body. The disabled playback icon retains its accessible action and Bluetooth-blocked explanation. Header rows reserve the same 48dp height, so text titles align across modes; source labels truncate to protect metadata space. Loading offers a progress/cancel icon, playback a stop square, and errors a toast.
+
+This is a display/layout check; it does not re-accept audio playback or synthesis. Synthetic records are restored out of the ten-record history after verification, retaining real arrivals and deduplication. No provider call or test audio is required for these UI fixtures.
