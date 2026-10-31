@@ -56,6 +56,7 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 enum class HomePage { MESSAGES, CHAT, SETTINGS }
 
@@ -69,6 +70,7 @@ fun HomeApp(
     onProximity: (Boolean) -> Unit, onSettings: (String) -> Unit, onOtherLauncher: () -> Unit,
     onConfirmHub: (String) -> Unit, onClear: () -> Unit, onVersion: () -> Unit,
     onSurfaceColors: (Color, Boolean) -> Unit,
+    voiceVolume: Int, volumeSteps: Int, onVoiceVolume: (Int) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val dark = colors.background == Color(0xFF101B16)
@@ -82,7 +84,8 @@ fun HomeApp(
                     HomePage.MESSAGES -> MessagePage(messages, selectedId, hubs.isNotEmpty(), active, bluetooth, media, onSelect, arrivalId, onArrivalShown)
                     HomePage.CHAT -> ChatPage()
                     HomePage.SETTINGS -> SettingsPage(hubStatus, hubs, proximity, mode, storageNotice,
-                        onTheme, onProximity, onSettings, onOtherLauncher, onConfirmHub, onClear, onVersion)
+                        onTheme, onProximity, onSettings, onOtherLauncher, onConfirmHub, onClear, onVersion,
+                        voiceVolume, volumeSteps, onVoiceVolume)
                 }
             }
             if (page == HomePage.MESSAGES) {
@@ -350,7 +353,8 @@ private fun ChatPage() {
 @Composable
 private fun SettingsPage(hubStatus: Int, hubs: List<DiscoveredHub>, proximity: Boolean, mode: ThemeMode, storageNotice: Int,
                          onTheme: (ThemeMode) -> Unit, onProximity: (Boolean) -> Unit, onSettings: (String) -> Unit,
-                         onOtherLauncher: () -> Unit, onConfirmHub: (String) -> Unit, onClear: () -> Unit, onVersion: () -> Unit) {
+                         onOtherLauncher: () -> Unit, onConfirmHub: (String) -> Unit, onClear: () -> Unit, onVersion: () -> Unit,
+                         voiceVolume: Int, volumeSteps: Int, onVoiceVolume: (Int) -> Unit) {
     Column(Modifier.fillMaxSize().testTag("page_settings").verticalScroll(rememberScrollState())) {
         Text(stringResource(R.string.main_settings), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
@@ -370,6 +374,20 @@ private fun SettingsPage(hubStatus: Int, hubs: List<DiscoveredHub>, proximity: B
                         }
                         Spacer(Modifier.height(6.dp))
                         Text(stringResource(R.string.theme_schedule), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface) {
+                    Column(Modifier.padding(16.dp)) {
+                        var draft by remember(voiceVolume) { mutableFloatStateOf(voiceVolume.toFloat()) }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.voice_volume_title), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.voice_volume_step, draft.roundToInt(), volumeSteps), Modifier.testTag("voice_volume_value"))
+                        }
+                        Slider(value = draft, onValueChange = { draft = it }, valueRange = 1f..volumeSteps.coerceAtLeast(2).toFloat(), enabled = volumeSteps > 1,
+                            steps = (volumeSteps - 2).coerceAtLeast(0), onValueChangeFinished = { onVoiceVolume(draft.roundToInt()) },
+                            modifier = Modifier.testTag("voice_volume_slider"))
+                        Text(stringResource(R.string.voice_volume_hint), style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface) {

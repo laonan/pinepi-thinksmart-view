@@ -245,3 +245,10 @@ Supersedes the non-click design: remove 28dp outer bottom padding, use a 32dp ar
 ### 0.8.1 Baidu short-text TTS (2026-10-31)
 
 Baidu credentials are configured privately on the Hub. The four fixed Chinese announcements were generated with voice 0 and bundled into Android 0.8.1 / code 23. HTTP TEXT/TTS publishing may omit speech; Hub checks the explicit mode before any provider call, synthesizes the body, caches MP3, then sends a strict v2 message with speech URL. PRIVATE never calls the provider. The user confirmed all four local announcements and a complete Hub-generated narration. This first adapter rejects bodies that cannot be GBK-encoded or reach 1024 GBK bytes; no truncation, long-news segmentation, STT, Agent, or scheduling is implied. The earlier credential-pending statements describe 0.8.0, not the current state.
+
+
+### Message playback volume (0.8.2)
+
+Settings → **语音播放音量** (voice playback volume) saves a minimum media-volume step, displayed as **1/15 … 15/15** on ThinkSmart, default **14/15**. Just before a local arrival announcement, text narration, or manually selected audio message starts, the terminal raises media volume only if it is below this minimum. It does not lower a louder setting. Downloads, blocked Bluetooth playback, and diagnostics do not raise volume; the video player itself retains normal media-volume behavior.
+
+On completion, cancellation, error, interruption, or leaving Home, the previous volume is restored before audio focus is released. A volume-key press or observed external volume change during playback keeps the user's adjustment instead. This restoration covers normal playback/lifecycle cleanup, not abrupt process termination or power loss. The selector uses the device's actual media-volume steps directly, with no percentage conversion. Bluetooth music remains protected by the existing disconnect requirement; there is no automatic disconnection or queued replay.

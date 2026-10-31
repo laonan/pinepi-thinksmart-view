@@ -373,3 +373,12 @@ Five synthetic real Hub→terminal messages saved and ACKed: PRIVATE, IMAGE, AUD
 Initial full Hub regression: 75 passed / one known synthetic HTTPS/WSS handshake timeout. That case passed an isolated rerun. After the final concurrency regression was added, the complete final suite passed 77 tests, with the existing Starlette/httpx deprecation warning retained; no timeout or test was disabled.
 
 Test records were removed with Settings foreground and application stopped; original ten IDs were verified restored, merging any real arrivals and retaining deduplication. The user re-established Bluetooth readiness after restoration/restart. No extra test messages were sent afterward. Temporary image/video/audio fixtures were removed from the Hub; the generated public narration cache may be retained for reuse. News collection, scheduling, STT, Agent integration, and long-text synthesis were not claimed complete.
+
+
+## 0.8.2 Message volume floor (2026-10-31)
+
+Settings now selects actual media steps 1/15–15/15, default 14/15, persisted locally. Playback raises only below the chosen floor, immediately before starting after preparation and granted focus. Normal cleanup restores before focus release; volume-key intent or an observed external adjustment suppresses restoration. Local arrival prompts, narration, and manual audio use this path; video and diagnostic audio retain their previous behavior.
+
+Android build, 38 JVM tests (including seven volume-policy cases), and Lint passed, with zero errors and six existing warnings. On-device Settings displayed the new default; changing 13/15 then 14/15 persisted both values. Final-step-build Hub narration verified 3→14→3; a volume-down key during narration verified 3→14→13, remaining 13 after completion. The earlier percentage prototype was replaced at the user's request. One SSH publication attempt disconnected before submission; retry succeeded.
+
+All four synthetic volume-test records were removed. The original ten IDs were verified restored, with durable deduplication retained. System media volume returned to its pre-test 14/15; the saved message floor remained 14/15. No Bluetooth switch or phone connection was changed automatically. Abrupt process death/power loss restoration and primary video volume behavior are outside this feature's acceptance.

@@ -8,8 +8,10 @@ import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.edit
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
@@ -23,6 +25,29 @@ import java.util.concurrent.TimeUnit
 class MessageAudio(private val context: Context, private val bluetooth: BluetoothMonitor) {
     private val main = Handler(Looper.getMainLooper())
     private val manager = context.getSystemService(AudioManager::class.java)
+    private val preferences = context.getSharedPreferences("message_audio", Context.MODE_PRIVATE)
+    var minimumVolumeStep by mutableIntStateOf(preferences.getInt("minimum_volume_step", 14).coerceIn(1, volumeSteps))
+        private set
+    val volumeSteps: Int get() = manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+    private val volume = MessageVolume(
+        { manager.getStreamVolume(AudioManager.STREAM_MUSIC) },
+        { volumeSteps },
+        { manager.setStreamVolume(AudioManager.STREAM_MUSIC, it, 0) },
+    )
+    private val volumeWatch = object : Runnable {
+        override fun run() {
+            volume.observe()
+            if (player != null) main.postDelayed(this, 200)
+        }
+    }
+
+    fun updateMinimumVolume(step: Int) {
+        minimumVolumeStep = step.coerceIn(1, volumeSteps)
+        preferences.edit { putInt("minimum_volume_step", minimumVolumeStep) }
+    }
+
+    fun userAdjustedVolume() = volume.userAdjusted()
+
     private val client = OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS).callTimeout(45, TimeUnit.SECONDS)
         .followRedirects(false).followSslRedirects(false).build()
@@ -155,7 +180,11 @@ class MessageAudio(private val context: Context, private val bluetooth: Bluetoot
             if (generation != token || player !== next || !allowed()) return@setOnPreparedListener
             if (manager.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) { stop(); return@setOnPreparedListener }
             loading = false
-            try { next.start() } catch (_: Exception) { stop(); lastError = "音频播放失败" }
+            try {
+                volume.begin(minimumVolumeStep)
+                next.start()
+                main.postDelayed(volumeWatch, 200)
+            } catch (_: Exception) { stop(); lastError = "音频播放失败" }
         }
         next.setOnCompletionListener { if (generation == token && player === next) stop() }
         next.setOnErrorListener { _, _, _ ->
@@ -173,6 +202,9 @@ class MessageAudio(private val context: Context, private val bluetooth: Bluetoot
             release()
         }
         player = null
+        main.removeCallbacks(volumeWatch)
+        // Restore before releasing focus, so resumed music uses its previous volume.
+        volume.finish()
         manager.abandonAudioFocusRequest(focus)
         cached?.delete(); cached = null
         currentId = null

@@ -139,4 +139,7 @@
     <string name="date_time_settings">日期与时间</string>
     <string name="main_more_below">下方还有内容</string>
     <string name="main_scroll_hint">请向上滑显示全部内容</string>
+    <string name="voice_volume_title">语音播放音量</string>
+    <string name="voice_volume_step">%1$d/%2$d</string>
+    <string name="voice_volume_hint">消息播放时临时提高到此档位，播完恢复；手动调节则保留。</string>
 </resources>

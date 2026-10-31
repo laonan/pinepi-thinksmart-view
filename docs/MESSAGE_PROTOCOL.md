@@ -206,7 +206,7 @@ It maps to unauthenticated `GET /media/<filename>` for trusted-LAN terminals. St
 
 - Arrival sound is triggered only after a new v2 message is saved. Legacy v1 text remains silent.
 - The newest arrival replaces current message audio; there is no delayed narration queue. Late callbacks from canceled downloads cannot restart sound. An upstream scheduler must coordinate sequential news items; automatic queuing of an entire morning briefing is not implemented.
-- Local prompts, text narration, audio, and video sound are mutually exclusive. They use media volume without changing system volume.
+- Local prompts, text narration, audio, and video sound are mutually exclusive. They use the media stream; message prompts, narration, and audio messages apply the temporary volume floor described below.
 - Playback is allowed only when Bluetooth is off or all connections are confirmed disconnected. Unknown/connecting/connected states block automatic sound. Reconnection cancels message audio immediately. Message audio is suspended on the diagnostics recording page. Previously blocked sounds are not replayed when the block clears.
 - Leaving the Home Activity, switching Home pages or the selected message, or clearing messages stops current message audio. History restoration and paging do not automatically replay sounds.
 - The terminal retains ten messages and persists the latest 256 accepted IDs. Within this window, retries do not save, wake, announce, or narrate again. Clearing display history preserves deduplication IDs. Permanent deduplication beyond this bound is not promised; publishers must use a new ID for changed content.
@@ -255,3 +255,10 @@ The default voice is Du Xiaomei (`per=0`); select another enabled Baidu voice wi
 Commit the four generated MP3 product assets, then rebuild/install the APK. They remain available on the terminal without runtime Baidu calls. The private configuration is excluded by `.gitignore` and must never be committed. All four assets are now referenced at compile time; a missing file must be restored before building. Actual audibility still requires device validation.
 
 Reference: [Baidu short-text synthesis API](https://ai.baidu.com/ai-doc/SPEECH/mlbxh7xie).
+
+
+### Message playback volume (0.8.2)
+
+Settings → **语音播放音量** (voice playback volume) saves a minimum media-volume step, displayed as **1/15 … 15/15** on ThinkSmart, default **14/15**. Just before a local arrival announcement, text narration, or manually selected audio message starts, the terminal raises media volume only if it is below this minimum. It does not lower a louder setting. Downloads, blocked Bluetooth playback, and diagnostics do not raise volume; the video player itself retains normal media-volume behavior.
+
+On completion, cancellation, error, interruption, or leaving Home, the previous volume is restored before audio focus is released. A volume-key press or observed external volume change during playback keeps the user's adjustment instead. This restoration covers normal playback/lifecycle cleanup, not abrupt process termination or power loss. The selector uses the device's actual media-volume steps directly, with no percentage conversion. Bluetooth music remains protected by the existing disconnect requirement; there is no automatic disconnection or queued replay.

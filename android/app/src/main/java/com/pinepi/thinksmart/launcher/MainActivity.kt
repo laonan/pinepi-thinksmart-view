@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
+import android.view.KeyEvent
 import android.view.View
 import android.widget.Toast
 import androidx.core.content.edit
@@ -93,6 +94,9 @@ class MainActivity : ComponentActivity() {
                         storageNotice = if (store.clear()) R.string.main_messages_cleared else R.string.main_storage_failed
                     },
                     onVersion = ::tapVersion,
+                    voiceVolume = app.messageAudio.minimumVolumeStep,
+                    volumeSteps = app.messageAudio.volumeSteps,
+                    onVoiceVolume = app.messageAudio::updateMinimumVolume,
                     onSurfaceColors = { background, isDark ->
                         window.setBackgroundDrawable(background.toArgb().toDrawable())
                         window.statusBarColor = background.toArgb()
@@ -103,6 +107,14 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN ||
+            keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) {
+            (application as LauncherApplication).messageAudio.userAdjustedVolume()
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
     override fun onResume() {
         super.onResume()
         active = true
