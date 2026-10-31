@@ -125,3 +125,8 @@ mDNS 类型 `_pinepi-hub._tcp.local.`，TXT 为 `id`（持久 UUID）、`v=1`、
 用户问答及正常回复走 `PinePi Home ↔ Hub ↔ Hermes API`；Hermes 主动通知走 `Hermes → Broadcast Mid → Hub → PinePi Home`，复用 Mid 现有发布接口及 Hub 独立订阅。主动通知不自动触发 Agent 推理或合并进当前聊天上下文；若以后需要关联，会话字段另行定义。文本 title/content 已接通，图片/视频负载另行适配。
 
 本阶段不开发自定义 Hermes 渠道或 Gadget 适配，不引入多 Agent 通用插件框架。Hermes、Tailscale 尚未实施；Broadcast Mid 文本通知已独立接通。
+
+
+### 严重程度（0.8.4）
+
+消息可携带 `severity: "NORMAL"`（普通）或 `"CRITICAL"`（严重），省略默认普通。严重等级仅用于可信的战争、重大灾害、家人可能遭遇重大危机等情况，不用于日常新闻或普通提醒，由发送方审慎指定，不自动分类。严重卡片随深浅主题使用柔和琥珀色/暖棕色背景、细边框和警告图标及文字。隐私及播放规则不变。使用字段前先升级 Hub 与终端；旧严格 v2 实现会拒绝新字段。JSON 与发布约定见[消息协议](../docs/MESSAGE_PROTOCOL.zh-CN.md)。

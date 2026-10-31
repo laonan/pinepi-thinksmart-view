@@ -180,7 +180,7 @@ class HubTestService : Service() {
             val message = if (notification && json.opt("version") == 2) {
                 HomeMessageProtocol.decode(json) ?: return
             } else {
-                if (json.opt("version") != 1 || (notification && json.opt("kind") != "TEXT")) return
+                if (json.opt("version") != 1 || json.has("severity") || (notification && json.opt("kind") != "TEXT")) return
                 val id = json.opt("id") as? String ?: return
                 val content = json.opt("text") as? String ?: return
                 if (content.isBlank() || content.toByteArray(Charsets.UTF_8).size > (if (notification) 32 * 1024 else 2048)) return

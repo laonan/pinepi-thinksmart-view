@@ -63,4 +63,20 @@ class MessageHistoryTest {
             assertFalse(media.copy(speechUrl = "https://example.com/read.mp3").isValid())
         }
     }
+    @Test fun missingSeverityDefaultsToNormalForExistingRecords() {
+        assertEquals(HomeMessage.Severity.NORMAL, message("legacy").severity)
+        assertFalse(message("legacy").copy(severity = HomeMessage.Severity.CRITICAL).isValid())
+    }
+
+    @Test fun criticalDoesNotOverridePrivateOrTtsValidation() {
+        val private = message("critical").copy(version = 2, createdAt = "2026-10-31T07:30:00Z",
+            textMode = HomeMessage.TextMode.PRIVATE, severity = HomeMessage.Severity.CRITICAL)
+        assertTrue(private.isValid())
+        assertFalse(private.copy(speechUrl = "https://example.com/private.mp3").isValid())
+        assertFalse(private.copy(textMode = HomeMessage.TextMode.TTS).isValid())
+        val history = MessageHistory()
+        assertTrue(history.add(private))
+        assertEquals(HomeMessage.Severity.CRITICAL, history.messages.single().severity)
+    }
+
 }

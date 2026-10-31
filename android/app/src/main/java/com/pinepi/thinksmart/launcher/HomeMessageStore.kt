@@ -38,7 +38,8 @@ class HomeMessageStore(context: Context) {
                         row.getString("source"), row.getLong("receivedAt"), row.optString("title"),
                         row.optString("text"), row.optString("mediaUrl"), row.optInt("version", 1),
                         row.optString("createdAt"), HomeMessage.TextMode.valueOf(row.optString("textMode", "LEGACY")),
-                        row.optString("speechUrl"), row.optString("mediaMime")))
+                        row.optString("speechUrl"), row.optString("mediaMime"),
+                        HomeMessage.Severity.valueOf(row.optString("severity", "NORMAL"))))
                 }
                 history.messages.forEach { seen.add(it.id) }
                 while (seen.size > 256) seen.remove(seen.first())
@@ -71,7 +72,8 @@ class HomeMessageStore(context: Context) {
                 .put("source", message.source).put("receivedAt", message.receivedAt)
                 .put("title", message.title).put("text", message.text).put("mediaUrl", message.mediaUrl)
                 .put("version", message.version).put("createdAt", message.createdAt).put("textMode", message.textMode.name)
-                .put("speechUrl", message.speechUrl).put("mediaMime", message.mediaMime))
+                .put("speechUrl", message.speechUrl).put("mediaMime", message.mediaMime)
+                .put("severity", message.severity.name))
         }
         var output: java.io.FileOutputStream? = null
         try {

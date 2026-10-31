@@ -145,3 +145,43 @@ def test_explicit_media_directory_serves_files_but_not_parent_or_symlink(tmp_pat
         assert response.status_code == 200 and response.headers['content-type'].startswith('audio/mpeg')
         assert client.get('/media/escape.json').status_code == 404
         assert client.get('/media/%2e%2e/secret.json').status_code == 404
+
+
+@pytest.mark.parametrize('kind,mode', [('TEXT', 'PRIVATE'), ('TEXT', 'TTS'), ('IMAGE', ''), ('AUDIO', ''), ('VIDEO', '')])
+@pytest.mark.parametrize('severity', ['NORMAL', 'CRITICAL'])
+def test_explicit_severity_survives_mid_and_pending_restart(tmp_path, kind, mode, severity):
+    item = dict(message(kind, mode), severity=severity)
+    assert validate_message(item) == item
+    assert decode_notification({'event': item}) == (item, None)
+    store = NotificationStore(tmp_path / 'pending.json')
+    assert store.add(item)
+    assert NotificationStore(store.path).messages == [item]
+
+
+@pytest.mark.parametrize('severity', [None, '', 'critical', 'SEVERE', 1, True, [], {}])
+def test_invalid_severity_is_rejected_without_legacy_downgrade(severity):
+    item = dict(message(), severity=severity)
+    with pytest.raises(ProtocolError, match='invalid_severity'):
+        validate_message(item)
+    item['content'] = 'must not become legacy text'
+    assert decode_notification(item)[0] is None
+    assert decode_notification({'content': 'legacy', 'severity': severity})[0] is None
+
+
+def test_missing_severity_remains_ordinary_without_rewriting_frame():
+    item = message()
+    assert validate_message(item) is item
+    assert 'severity' not in item
+
+
+def test_critical_private_http_and_websocket_preserve_privacy(tmp_path):
+    link = LinkTest('d'*40, 'c'*40, trusted_lan=True)
+    link.notifications = NotificationStore(tmp_path / 'pending.json')
+    item = dict(message(), severity='CRITICAL')
+    headers = {'Authorization': 'Bearer ' + 'c'*40}
+    with TestClient(create_app(link_test=link)) as client:
+        assert client.post('/api/messages', json=item, headers=headers).json()['status'] == 'queued'
+        with client.websocket_connect('/_test/device') as ws:
+            received = ws.receive_json()
+            assert received == item
+            assert received['text_mode'] == 'PRIVATE' and 'speech' not in received

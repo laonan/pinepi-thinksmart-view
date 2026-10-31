@@ -58,7 +58,7 @@ def _asset(value, allowed):
 
 
 def validate_message(message):
-    """Validate without coercion, defaults, truncation or provider side effects."""
+    """Validate without coercion, rewriting, truncation or provider side effects."""
     _require(isinstance(message, dict), 'invalid_message')
     _require(message.get('type') == 'home.message' and type(message.get('version')) is int
              and message['version'] == 2, 'unsupported_protocol')
@@ -78,7 +78,9 @@ def validate_message(message):
         raise ProtocolError('invalid_created_at') from None
     kind = message['kind']
     _require(isinstance(kind, str) and kind in {'TEXT', *MEDIA_TYPES}, 'unsupported_kind')
-    allowed = required | {'title'}
+    severity = message.get('severity', 'NORMAL')
+    _require(isinstance(severity, str) and severity in ('NORMAL', 'CRITICAL'), 'invalid_severity')
+    allowed = required | {'title', 'severity'}
     if kind == 'TEXT':
         allowed |= {'text', 'text_mode', 'speech'}
         text = _string(message.get('text'), 8192, nonempty=True)

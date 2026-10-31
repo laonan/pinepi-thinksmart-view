@@ -14,7 +14,9 @@ data class HomeMessage(
     val textMode: TextMode = TextMode.LEGACY,
     val speechUrl: String = "",
     val mediaMime: String = "",
+    val severity: Severity = Severity.NORMAL,
 ) {
+    enum class Severity { NORMAL, CRITICAL }
     enum class Kind { TEXT, IMAGE, VIDEO, AUDIO }
     enum class TextMode { LEGACY, TTS, PRIVATE }
     fun isValid(): Boolean = id.matches(Regex("[A-Za-z0-9_-]{1,80}")) &&
@@ -22,7 +24,7 @@ data class HomeMessage(
         text.toByteArray(Charsets.UTF_8).size <= 32 * 1024 &&
         (version == 1 || version == 2) &&
         (version != 2 || (source.isNotBlank() && validCreatedAt(createdAt))) &&
-        (version != 1 || (textMode == TextMode.LEGACY && speechUrl.isEmpty())) &&
+        (version != 1 || (textMode == TextMode.LEGACY && speechUrl.isEmpty() && severity == Severity.NORMAL)) &&
         when (kind) {
             Kind.TEXT -> text.isNotBlank() && mediaUrl.isEmpty() && mediaMime.isEmpty() &&
                 when (textMode) {

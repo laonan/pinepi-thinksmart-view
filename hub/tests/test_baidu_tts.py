@@ -156,3 +156,14 @@ def test_private_notification_does_not_wait_for_slow_synthesis(tmp_path):
             release.set()
             await task
     asyncio.run(scenario())
+
+
+def test_critical_keeps_tts_body_only_and_private_never_calls_provider(speech):
+    with patch('pinepi_hub.baidu_tts.fetch', side_effect=mock_fetch) as fetch:
+        result = speech.prepare(dict(submission(), severity='CRITICAL'))
+        assert result['severity'] == 'CRITICAL'
+        assert parse_qs(fetch.call_args.args[0].data.decode())['tex'] == [submission()['text']]
+        count = fetch.call_count
+        private = dict(submission('PRIVATE', 'critical-private'), severity='CRITICAL')
+        assert speech.prepare(private) == private
+        assert fetch.call_count == count and 'speech' not in private

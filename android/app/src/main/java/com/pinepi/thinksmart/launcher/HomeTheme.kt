@@ -5,6 +5,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -49,3 +50,14 @@ private val HomeTypography = Typography(
 fun PinePiTheme(dark: Boolean, content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = if (dark) NightColors else DayColors, typography = HomeTypography, content = content)
 }
+
+/** Warm warning surfaces stay subdued in both themes; text never relies on hue alone. */
+@Immutable
+internal data class MessageWarningColors(val container: Color, val content: Color, val outline: Color)
+
+internal val DayMessageWarning = MessageWarningColors(Color(0xFFFFF0D4), Color(0xFF4A3517), Color(0xFFB7791F))
+internal val NightMessageWarning = MessageWarningColors(Color(0xFF352C1E), Color(0xFFF0DEC2), Color(0xFF9F7C40))
+
+@Composable
+internal fun messageWarningColors(): MessageWarningColors =
+    if (MaterialTheme.colorScheme.background == Color(0xFF101B16)) NightMessageWarning else DayMessageWarning

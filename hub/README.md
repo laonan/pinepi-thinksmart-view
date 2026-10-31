@@ -126,3 +126,8 @@ The first Agent is Hermes, called by the Hub over its HTTP API through a private
 Conversation replies use `PinePi Home ↔ Hub ↔ Hermes API`. Proactive Hermes notifications reuse `Hermes → Broadcast Mid → Hub → PinePi Home`, with the existing publish endpoint and independent Hub subscription. Notifications do not automatically invoke Agent reasoning or enter active chat context; correlation fields can be defined later if needed. Legacy text is connected; v2 transport support is described in the message protocol.
 
 Do not introduce a custom Hermes channel, Gadget integration, or a general multi-Agent plugin framework in this stage. Hermes/Tailscale deployment remains pending, independently of the working Mid text subscription.
+
+
+### Severity (0.8.4)
+
+Messages may carry `severity: "NORMAL"` or `"CRITICAL"`; omitted defaults to NORMAL. Reserve CRITICAL for credible war, major disaster or potential serious family crises, rather than everyday news and reminders. The publisher assigns it; there is no automatic classifier. Severe cards use subdued amber/warm-brown surfaces for light/dark themes, a fine border and a warning icon plus label. Privacy and playback policies remain unchanged. Upgrade Hub and terminal before publishing the field; older strict v2 readers reject it. See [Message protocol](../docs/MESSAGE_PROTOCOL.md) for JSON and publishing rules.

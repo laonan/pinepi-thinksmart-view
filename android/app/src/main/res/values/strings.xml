@@ -143,4 +143,5 @@
     <string name="voice_volume_step">%1$d/%2$d</string>
     <string name="voice_volume_hint">消息播放时临时提高到此档位，播完恢复；手动调节则保留。</string>
     <string name="main_private_message">隐私消息：正文不发送至第三方语音服务</string>
+    <string name="main_severity_critical">严重</string>
 </resources>

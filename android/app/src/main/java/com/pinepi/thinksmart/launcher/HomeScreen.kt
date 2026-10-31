@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
@@ -212,26 +214,43 @@ private fun MessagePage(messages: List<HomeMessage>, selectedId: String?, discov
 
 @Composable
 private fun MessageCard(message: HomeMessage, active: Boolean, bluetooth: BluetoothMonitor.State, media: HomeMediaResources, contentOpacity: () -> Float) {
-    Surface(Modifier.fillMaxSize().testTag("message_card"), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
+    val critical = message.severity == HomeMessage.Severity.CRITICAL
+    val warning = messageWarningColors()
+    Surface(Modifier.fillMaxSize().testTag("message_card"), shape = RoundedCornerShape(28.dp),
+        color = if (critical) warning.container else MaterialTheme.colorScheme.surface,
+        contentColor = if (critical) warning.content else MaterialTheme.colorScheme.onSurface,
+        border = if (critical) BorderStroke(1.dp, warning.outline.copy(alpha = 0.6f)) else null) {
         Column(Modifier.padding(start = 28.dp, top = 28.dp, end = 28.dp,
             bottom = if (message.kind == HomeMessage.Kind.TEXT) 0.dp else 28.dp)
             .graphicsLayer { alpha = contentOpacity() }) {
             Row(modifier = Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Surface(modifier = Modifier.widthIn(max = 280.dp), shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+                Surface(modifier = Modifier.widthIn(max = 280.dp), shape = RoundedCornerShape(8.dp), color = if (critical) warning.content.copy(alpha = 0.08f) else MaterialTheme.colorScheme.secondaryContainer) {
                     Text(message.source, Modifier.padding(horizontal = 10.dp, vertical = 4.dp).testTag("message_source"),
-                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        style = MaterialTheme.typography.labelMedium, color = if (critical) warning.content else MaterialTheme.colorScheme.onSecondaryContainer,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Text(SimpleDateFormat("M月d日 HH:mm", Locale.SIMPLIFIED_CHINESE).format(Date(
                     if (message.version == 2) java.time.OffsetDateTime.parse(message.createdAt).toInstant().toEpochMilli() else message.receivedAt)),
-                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (critical) warning.content.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant)
                 if (message.textMode == HomeMessage.TextMode.PRIVATE) {
                     Icon(Icons.Default.Lock, stringResource(R.string.main_private_message),
-                        Modifier.size(18.dp).testTag("message_private"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Modifier.size(18.dp).testTag("message_private"),
+                        tint = if (critical) warning.content else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (message.kind == HomeMessage.Kind.TEXT && message.textMode == HomeMessage.TextMode.TTS) {
                     AudioControls(message, bluetooth.allowsAudio, active, compact = true)
+                }
+                if (critical) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = warning.content.copy(alpha = 0.1f),
+                        contentColor = warning.content, modifier = Modifier.testTag("message_critical")) {
+                        Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Default.Warning, null, Modifier.size(14.dp))
+                            Text(stringResource(R.string.main_severity_critical), style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(20.dp))

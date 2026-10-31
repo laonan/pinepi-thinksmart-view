@@ -8,7 +8,7 @@ object HomeMessageProtocol {
         require(json.opt("type") == "home.message" && json.opt("version") == 2)
         fun string(key: String) = json.get(key) as? String ?: error("invalid string")
         val kind = HomeMessage.Kind.valueOf(string("kind"))
-        var allowed = setOf("type", "version", "id", "source", "created_at", "kind", "title")
+        var allowed = setOf("type", "version", "id", "source", "created_at", "kind", "title", "severity")
         var text = ""
         var mode = HomeMessage.TextMode.LEGACY
         var mediaUrl = ""
@@ -44,6 +44,7 @@ object HomeMessageProtocol {
         require(HomeMessage.validCreatedAt(timestamp))
         HomeMessage(string("id"), kind, string("source"), now,
             if (json.has("title")) string("title") else "", text, mediaUrl,
-            2, timestamp, mode, speechUrl, mediaMime).also { require(it.isValid()) }
+            2, timestamp, mode, speechUrl, mediaMime,
+            if (json.has("severity")) HomeMessage.Severity.valueOf(string("severity")) else HomeMessage.Severity.NORMAL).also { require(it.isValid()) }
     } catch (_: Exception) { null }
 }

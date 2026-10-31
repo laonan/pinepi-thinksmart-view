@@ -2,7 +2,7 @@
 
 **English** | [中文版](MESSAGE_PROTOCOL.zh-CN.md)
 
-Protocol version: `2`. Applies to Android 0.8.0 and later with the matching Hub; Hub-managed Baidu synthesis and bundled prompts require 0.8.1. Replace example IP addresses with the actual Hub address.
+Protocol version: `2`. Applies to Android 0.8.0 and later with the matching Hub; Hub-managed Baidu synthesis and bundled prompts require 0.8.1; severity support requires 0.8.4. Replace example IP addresses with the actual Hub address.
 
 ## Implementation status
 
@@ -70,11 +70,37 @@ Missing/invalid configuration returns `503`; provider connection/authentication/
 | `source` | string | Yes | Nonblank display source, up to 100 UTF-16 units |
 | `created_at` | string | Yes | ISO 8601 with a timezone, year 1970 onward; e.g. `2026-10-31T07:30:00+08:00` or `2026-10-30T23:30:00Z`; optional 1–3 fractional-second digits |
 | `kind` | string | Yes | Case-sensitive `TEXT`, `IMAGE`, `AUDIO`, or `VIDEO` |
+| `severity` | string | No | `NORMAL` or `CRITICAL`; omitted means `NORMAL`; see below |
 | `title` | string | No | Up to 200 UTF-16 units; omitted means empty |
 
 Omit absent optional fields instead of sending `null`. Version 2 rejects unknown fields and fields belonging to another variant. Examples: `PRIVATE` with `speech`, an image with `text`, or any message with `autoplay` is invalid. Type and text mode determine playback policy; extra fields cannot override it.
 
 Each message has one primary content type. Titles and bodies are plain text, not HTML/Markdown. Display time comes from `created_at`; ordering remains based on terminal arrival, not an upstream clock that may move backward.
+
+## Severity (0.8.4)
+
+`severity` is an optional common field for all five v2 variants: `"NORMAL"` (ordinary) or `"CRITICAL"` (severe), case-sensitive. Omission means NORMAL for new messages and existing terminal history. Explicit `null`, numbers, unknown values, and localized strings are rejected. It is a v2 extension, not a new protocol version. Upgrade the Hub and terminal to 0.8.4 support before publishers send this field: earlier strict v2 implementations reject it, including explicit NORMAL. Messages omitting it remain compatible. The Hub preserves the field through synthesis, durable storage, forwarding and replay; it does not infer or automatically promote severity from text or keywords.
+
+Use NORMAL routinely, including ordinary news, reminders, promotions, and inconvenience. Reserve CRITICAL for credible reports of war, major natural disasters, or a family member potentially facing a major crisis, where prompt attention is warranted. Sensational language alone is insufficient. The publisher must assess credibility, relevance and potential harm; this is a publishing rule, not an automatic fact checker. Do not use CRITICAL to attract attention or for every breaking-news item.
+
+CRITICAL uses a subdued amber card in light mode and a low-luminance warm-brown card in dark mode, a fine border, and a warning icon with the visible **严重** label. Text remains high contrast; there is no flashing or forced theme change. Severity does not alter arrival order, retention, ACK, deduplication, wake, privacy, Bluetooth gating, audio volume or playback policy. In particular, a critical PRIVATE body still never goes to the speech provider; there is no new alarm sound or forced playback.
+
+Example (illustrative content only):
+
+```json
+{
+  "type": "home.message",
+  "version": 2,
+  "id": "family-safety-example-001",
+  "source": "Family safety",
+  "created_at": "2026-10-31T07:30:00+08:00",
+  "kind": "TEXT",
+  "severity": "CRITICAL",
+  "title": "Please confirm family safety",
+  "text": "A major flood has been reported near a family member. Please contact them promptly to confirm their safety.",
+  "text_mode": "PRIVATE"
+}
+```
 
 ## Ordinary text: display and narrate
 
@@ -86,6 +112,7 @@ Each message has one primary content type. Titles and bodies are plain text, not
   "source": "Morning News",
   "created_at": "2026-10-31T07:30:00+08:00",
   "kind": "TEXT",
+  "severity": "NORMAL",
   "title": "Today's news",
   "text": "Good morning. Here is the first of today's five news summaries.",
   "text_mode": "TTS",
@@ -110,6 +137,7 @@ After a new message is saved, the terminal downloads and plays narration when au
   "source": "Personal Assistant",
   "created_at": "2026-10-31T08:00:00+08:00",
   "kind": "TEXT",
+  "severity": "NORMAL",
   "title": "Private reminder",
   "text": "Sensitive or private content for on-screen display only.",
   "text_mode": "PRIVATE"
@@ -130,6 +158,7 @@ This mode prohibits third-party narration; it does not change existing Hub proce
   "source": "Family Album",
   "created_at": "2026-10-31T08:10:00+08:00",
   "kind": "IMAGE",
+  "severity": "NORMAL",
   "title": "Today's photo",
   "media": {
     "url": "http://192.168.31.36:8766/media/image-20261031-001.jpg",
@@ -150,6 +179,7 @@ Play the local recording “有新的图片消息” (there is a new image messa
   "source": "Family Messages",
   "created_at": "2026-10-31T08:20:00+08:00",
   "kind": "AUDIO",
+  "severity": "NORMAL",
   "title": "Voice message",
   "media": {
     "url": "http://192.168.31.36:8766/media/audio-20261031-001.mp3",
@@ -170,6 +200,7 @@ Play the local recording “有新的音频消息” (there is a new audio messa
   "source": "Family Messages",
   "created_at": "2026-10-31T08:30:00+08:00",
   "kind": "VIDEO",
+  "severity": "NORMAL",
   "title": "Video message",
   "media": {
     "url": "http://192.168.31.36:8766/media/video-20261031-001.mp4",

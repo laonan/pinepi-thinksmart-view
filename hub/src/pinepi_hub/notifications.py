@@ -20,7 +20,7 @@ def decode_notification(packet):
     if not isinstance(event, dict):
         return None, 'invalid_event'
     # Explicit protocol fields must never fall through to the legacy text adapter.
-    if any(key in event for key in ('version', 'kind', 'text_mode', 'speech', 'media')) or event.get('type') == 'home.message':
+    if any(key in event for key in ('version', 'kind', 'text_mode', 'speech', 'media', 'severity')) or event.get('type') == 'home.message':
         try:
             return validate_message(event), None
         except ProtocolError as error:
