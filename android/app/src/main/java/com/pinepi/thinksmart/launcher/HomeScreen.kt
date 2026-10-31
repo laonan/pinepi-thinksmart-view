@@ -2,9 +2,12 @@
 
 package com.pinepi.thinksmart.launcher
 
+import android.view.Gravity
+import android.view.KeyEvent
 import android.provider.Settings
 import android.widget.MediaController
 import android.widget.VideoView
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -43,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -55,6 +59,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -501,6 +511,8 @@ private fun SettingItem(title: Int, icon: ImageVector, tag: String, onClick: () 
 @Composable
 private fun ImageMessage(message: HomeMessage, active: Boolean, resources: HomeMediaResources) {
     var state by remember(message.id) { mutableStateOf<HomeImageState>(HomeImageState.Loading) }
+    var expanded by remember(message.id) { mutableStateOf(false) }
+    LaunchedEffect(active) { if (!active) expanded = false }
     DisposableEffect(message.id, active) {
         var valid = true
         // Keep the decoded image visible while its card is being dragged away.
@@ -511,8 +523,23 @@ private fun ImageMessage(message: HomeMessage, active: Boolean, resources: HomeM
         onDispose { valid = false; call?.cancel() }
     }
     when (val result = state) {
-        is HomeImageState.Ready -> Image(result.bitmap.asImageBitmap(), stringResource(R.string.main_image_message),
-            Modifier.fillMaxSize().testTag("message_image"), contentScale = ContentScale.Fit)
+        is HomeImageState.Ready -> {
+            Box(Modifier.fillMaxSize()) {
+                Image(result.bitmap.asImageBitmap(), stringResource(R.string.main_image_fullscreen),
+                    Modifier.fillMaxSize().testTag("message_image")
+                        .clickable(enabled = active, role = Role.Button) { expanded = true }, contentScale = ContentScale.Fit)
+                IconButton(onClick = { expanded = true }, enabled = active,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                        .testTag("image_fullscreen_open")) {
+                    Icon(painterResource(R.drawable.ic_fullscreen), stringResource(R.string.main_image_fullscreen), tint = Color.White,
+                        modifier = Modifier.size(20.dp))
+                }
+            }
+            if (expanded && active) FullscreenMedia(onClose = { expanded = false }) {
+                Image(result.bitmap.asImageBitmap(), stringResource(R.string.main_image_message),
+                    Modifier.fillMaxSize().testTag("fullscreen_image"), contentScale = ContentScale.Fit)
+            }
+        }
         HomeImageState.Loading -> MediaNotice(R.string.main_media_loading)
         HomeImageState.Failed -> MediaNotice(R.string.main_media_failed)
     }
@@ -525,54 +552,138 @@ private fun MediaNotice(text: Int) {
     }
 }
 
+/** A dialog owns the entire display; it never opens another Activity or loses the selected card. */
+@Composable
+private fun FullscreenMedia(onClose: () -> Unit, content: @Composable BoxScope.() -> Unit) {
+    Dialog(onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        val view = LocalView.current
+        val window = (view.parent as? DialogWindowProvider)?.window
+        DisposableEffect(window) {
+            window?.let {
+                // SurfaceView can expose the window behind its aspect-ratio letterbox.
+                it.setBackgroundDrawableResource(android.R.color.black)
+                it.setDimAmount(0f)
+                WindowCompat.setDecorFitsSystemWindows(it, false)
+                WindowCompat.getInsetsController(it, it.decorView).apply {
+                    systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    hide(WindowInsetsCompat.Type.systemBars())
+                }
+            }
+            onDispose { }
+        }
+        Box(Modifier.fillMaxSize().background(Color.Black).testTag("fullscreen_media")
+            .semantics { testTagsAsResourceId = true }) {
+            content()
+            IconButton(onClick = onClose,
+                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.65f), CircleShape).testTag("fullscreen_close")) {
+                Icon(Icons.Default.Close, stringResource(R.string.main_close_fullscreen), Modifier.size(24.dp), tint = Color.White)
+            }
+        }
+    }
+}
+
 @Composable
 private fun VideoMessage(message: HomeMessage, active: Boolean, allowsPlayback: Boolean, resources: HomeMediaResources) {
     val context = LocalContext.current
     val messageAudio = (context.applicationContext as LauncherApplication).messageAudio
+    var expanded by remember(message.id) { mutableStateOf(false) }
     var requested by remember(message.id) { mutableStateOf(false) }
     var loading by remember(message.id) { mutableStateOf(false) }
+    var finished by remember(message.id) { mutableStateOf(false) }
     var error by remember(message.id) { mutableStateOf<Int?>(null) }
     val stillActive by rememberUpdatedState(active && allowsPlayback)
-    LaunchedEffect(active, allowsPlayback) { if (!active || !allowsPlayback) requested = false }
-    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-        if (requested && active && allowsPlayback) {
+    fun startPlayback() {
+        if (!active || !allowsPlayback) { error = R.string.main_video_blocked; return }
+        messageAudio.stop()
+        error = null; loading = true; finished = false; requested = true
+    }
+    fun open() {
+        if (!active) return
+        expanded = true
+        startPlayback()
+    }
+    fun close() { expanded = false; requested = false; loading = false }
+    LaunchedEffect(active, allowsPlayback) {
+        if (!active) close()
+        if (!allowsPlayback) { requested = false; loading = false; error = R.string.main_video_blocked }
+        else if (error == R.string.main_video_blocked) error = null
+    }
+    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
+        .clickable(enabled = active, role = Role.Button, onClickLabel = stringResource(R.string.main_video_fullscreen)) { open() }
+        .testTag("video_fullscreen_open"), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            FilledTonalIconButton(onClick = { open() }, enabled = active,
+                modifier = Modifier.size(64.dp).testTag("message_video_play")) {
+                Icon(Icons.Default.PlayArrow, stringResource(R.string.main_video_fullscreen), Modifier.size(32.dp))
+            }
+            Text(stringResource(R.string.main_video_fullscreen), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    if (expanded && active) FullscreenMedia(onClose = { close() }) {
+        if (requested && allowsPlayback) {
             AndroidView(factory = { context ->
-                VideoView(context).apply {
+                // Keep letterboxing in the native hierarchy: SurfaceView's transparent
+                // region must expose an opaque native background, not the Home window.
+                val container = FrameLayout(context).apply { setBackgroundColor(android.graphics.Color.BLACK) }
+                val video = VideoView(context).apply {
                     resources.video = this
+                    resources.onVideoStopped = { close() }
                     setOnPreparedListener { player ->
                         if (stillActive && resources.video === this) {
                             loading = false
                             player.isLooping = false
-                            val controls = MediaController(context)
+                            val controls = object : MediaController(context) {
+                                override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+                                    if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+                                        if (event.action == KeyEvent.ACTION_UP) close()
+                                        return true
+                                    }
+                                    return super.dispatchKeyEvent(event)
+                                }
+                            }
                             controls.setAnchorView(this)
                             tag = controls
                             setMediaController(controls)
                             start()
                         } else stopPlayback()
                     }
-                    setOnCompletionListener { requested = false }
-                    setOnErrorListener { _, _, _ -> error = R.string.main_media_failed; requested = false; true }
+                    setOnCompletionListener { requested = false; loading = false; finished = true }
+                    setOnErrorListener { _, _, _ -> error = R.string.main_media_failed; requested = false; loading = false; true }
                     if (HomeMediaUrl.allowed(message.mediaUrl)) setVideoPath(message.mediaUrl)
-                    else { error = R.string.main_media_failed; requested = false }
+                    else { error = R.string.main_media_failed; requested = false; loading = false }
                 }
+                container.addView(video, FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.CENTER))
+                container
             }, modifier = Modifier.fillMaxSize().testTag("message_video"),
-                onRelease = { view ->
-                    if (resources.video === view) resources.stopVideo() else {
-                        (view.tag as? MediaController)?.hide(); view.tag = null; view.stopPlayback()
+                onRelease = { container ->
+                    val view = container.getChildAt(0) as VideoView
+                    if (resources.video === view) {
+                        // Removing a completed player keeps the viewer open for replay.
+                        resources.onVideoStopped = null
+                        resources.stopVideo()
+                    } else {
+                        (view.tag as? MediaController)?.hide(); view.tag = null
+                        view.setOnPreparedListener(null); view.setOnCompletionListener(null); view.setOnErrorListener(null)
+                        view.stopPlayback()
                     }
                 })
-            if (loading) MediaNotice(R.string.main_media_loading)
-        } else {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                FilledTonalIconButton(onClick = {
-                    if (!allowsPlayback) error = R.string.main_video_blocked
-                    else { messageAudio.stop(); error = null; loading = true; requested = true }
-                }, modifier = Modifier.size(64.dp).testTag("message_video_play")) {
-                    Icon(Icons.Default.PlayArrow, stringResource(R.string.main_play_video), Modifier.size(32.dp))
-                }
-                Text(stringResource(error ?: R.string.main_play_video), Modifier.testTag("message_media_status"),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (loading) Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                CircularProgressIndicator(color = Color.White)
+                Text(stringResource(R.string.main_media_loading), color = Color.White)
             }
+        } else Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            FilledTonalIconButton(onClick = { startPlayback() }, enabled = allowsPlayback,
+                modifier = Modifier.size(64.dp).testTag("fullscreen_video_play")) {
+                Icon(Icons.Default.PlayArrow, stringResource(if (finished) R.string.main_replay_video else R.string.main_play_video), Modifier.size(32.dp))
+            }
+            Text(stringResource(error ?: if (finished) R.string.main_replay_video else R.string.main_play_video),
+                Modifier.testTag("message_media_status"), color = Color.White, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

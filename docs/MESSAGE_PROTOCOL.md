@@ -298,3 +298,10 @@ On completion, cancellation, error, interruption, or leaving Home, the previous 
 ### Message header icons (0.8.3)
 
 Private text shows a small lock immediately after the timestamp. Text narration uses a compact play icon in the same header, replacing the text button above the body. It changes to stop during playback and to a cancelable progress indicator during loading. Accessibility labels retain the action and Bluetooth-blocked reason; playback errors appear as a brief toast. Privacy and playback policies are unchanged.
+
+
+### Full-screen images and video (0.8.5)
+
+Tap an image or its expand icon to view the already-decoded bitmap full screen, preserving aspect ratio without another download. Tap the video area/play button to open a full-screen player and start only if Bluetooth playback is allowed. While blocked, the viewer opens with an explanation and disabled play button; disconnecting Bluetooth does not start it automatically.
+
+The viewer uses a black background, hides Home chrome and system bars, and provides a top-right close button and Android Back dismissal. Returning preserves the selected message. Video completion leaves a replay action in the viewer. Closing, leaving Home, changing the selected message or Bluetooth becoming unsafe releases/stops the video; a new message sound also closes a playing video viewer before using audio. No automatic media playback is added on message arrival. Existing download bounds, URL validation and message audio-volume rules remain unchanged; video uses ordinary media volume.

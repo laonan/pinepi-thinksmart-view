@@ -4,7 +4,7 @@
 
 A custom Android Home launcher for the Lenovo ThinkSmart View, built and validated against **Android 8.1.0 / API 27**. It preserves the existing ROM, Bluetooth speaker functionality, and original launcher. See [Project context](PROJECT_CONTEXT.md) for decisions and scope.
 
-## Current status: Material 3 UI, message protocol v2, and Baidu TTS (0.8.4)
+## Current status: Material 3 UI, message protocol v2, and Baidu TTS (0.8.5)
 
 See **[Message protocol and usage](docs/MESSAGE_PROTOCOL.md)** for publishing, complete JSON fields, all five examples, acknowledgements, media limits, and notification audio generation. Version 2 supports spoken text, private text with a local announcement, and image/audio/video URLs. Legacy v1 text remains silent.
 
@@ -34,6 +34,14 @@ Private text shows a small lock immediately after the timestamp. Text narration 
 ### Severity (0.8.4)
 
 Messages may carry `severity: "NORMAL"` or `"CRITICAL"`; omitted defaults to NORMAL. Reserve CRITICAL for credible war, major disaster or potential serious family crises, rather than everyday news and reminders. The publisher assigns it; there is no automatic classifier. Severe cards use subdued amber/warm-brown surfaces for light/dark themes, a fine border and a warning icon plus label. Privacy and playback policies remain unchanged. Upgrade Hub and terminal before publishing the field; older strict v2 readers reject it. See [Message protocol](docs/MESSAGE_PROTOCOL.md) for JSON and publishing rules.
+
+
+
+### Full-screen images and video (0.8.5)
+
+Tap an image or its expand icon to view the already-decoded bitmap full screen, preserving aspect ratio without another download. Tap the video area/play button to open a full-screen player and start only if Bluetooth playback is allowed. While blocked, the viewer opens with an explanation and disabled play button; disconnecting Bluetooth does not start it automatically.
+
+The viewer uses a black background, hides Home chrome and system bars, and provides a top-right close button and Android Back dismissal. Returning preserves the selected message. Video completion leaves a replay action in the viewer. Closing, leaving Home, changing the selected message or Bluetooth becoming unsafe releases/stops the video; a new message sound also closes a playing video viewer before using audio. No automatic media playback is added on message arrival. Existing download bounds, URL validation and message audio-volume rules remain unchanged; video uses ordinary media volume.
 
 
 ## Documentation

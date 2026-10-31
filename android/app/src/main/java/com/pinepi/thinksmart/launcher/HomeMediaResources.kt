@@ -27,6 +27,7 @@ class HomeMediaResources {
         .followRedirects(false).followSslRedirects(false).build()
     private var closed = false
     var video: VideoView? = null
+    var onVideoStopped: (() -> Unit)? = null
 
     fun loadImage(url: String, result: (HomeImageState) -> Unit): Call? {
         if (!HomeMediaUrl.allowed(url)) { result(HomeImageState.Failed); return null }
@@ -59,6 +60,8 @@ class HomeMediaResources {
     }
     fun pause() { client.dispatcher.cancelAll(); stopVideo() }
     fun stopVideo() {
+        val stopped = onVideoStopped
+        onVideoStopped = null
         video?.apply {
             (tag as? android.widget.MediaController)?.hide()
             tag = null
@@ -69,6 +72,7 @@ class HomeMediaResources {
             setMediaController(null)
         }
         video = null
+        stopped?.invoke()
     }
     fun close() {
         closed = true

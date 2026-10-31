@@ -144,4 +144,8 @@
     <string name="voice_volume_hint">消息播放时临时提高到此档位，播完恢复；手动调节则保留。</string>
     <string name="main_private_message">隐私消息：正文不发送至第三方语音服务</string>
     <string name="main_severity_critical">严重</string>
+    <string name="main_image_fullscreen">全屏查看图片</string>
+    <string name="main_video_fullscreen">全屏播放视频</string>
+    <string name="main_close_fullscreen">退出全屏</string>
+    <string name="main_replay_video">重新播放</string>
 </resources>
